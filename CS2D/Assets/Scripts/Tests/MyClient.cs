@@ -18,6 +18,8 @@ public class MyClient {
     private int pps;
     private List<Actions> clientActions = new List<Actions>();
     [SerializeField] int inputIndex;    
+    
+    private int lastRemoved = 0;
 
 
     public MyClient(GameObject cubeClient, Channel channel, Channel inputChannel, Channel ackChannel, int pps) {
@@ -82,7 +84,6 @@ public class MyClient {
         string serverIP = "127.0.0.1";
         int port = 9001;
         var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-        Debug.Log("Sending to input channel packet with " + packet.buffer.GetAvailableByteCount());
         inputChannel.Send(packet, remoteEp);
         packet.Free();
     }
@@ -93,9 +94,8 @@ public class MyClient {
         // Capaz tiene que ser un while
         if (packet != null) {
             int inputIndex = packet.buffer.GetInt();
-            Debug.Log("Index " + inputIndex);
-            Debug.Log("List count" + clientActions.Count);
-            clientActions.RemoveRange(0, inputIndex-1);
+            clientActions.RemoveRange(0, inputIndex - lastRemoved -1);
+            lastRemoved = inputIndex;
         }
     }
 

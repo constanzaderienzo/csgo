@@ -47,9 +47,8 @@ public class MyServer {
         packet.buffer.PutInt(inputIndex);
         packet.buffer.Flush();
         string serverIP = "127.0.0.1";
-        int port = 9001;
+        int port = 9002;
         var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-        Debug.Log("Sending to ack channel a packet with " + packet.buffer.GetAvailableByteCount());
         ackChannel.Send(packet, remoteEp);
         packet.Free();
     }
@@ -72,7 +71,6 @@ public class MyServer {
             string serverIP = "127.0.0.1";
             int port = 9000;
             var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-            Debug.Log("Sending to channel a packet with " + packet.buffer.GetAvailableByteCount());
             channel.Send(packet, remoteEp);
             packet.Free();
             // Restart accum
