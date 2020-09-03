@@ -13,6 +13,7 @@ public class MyServer {
     private int packetNumber = 0;
     private int pps;
 
+    private bool connected;
 
     public MyServer(GameObject cubeServer, Channel channel, Channel inputChannel, Channel ackChannel, int pps) {
         this.cubeServer = cubeServer;
@@ -20,6 +21,7 @@ public class MyServer {
         this.inputChannel = inputChannel;
         this.ackChannel = ackChannel;
         this.pps = pps;
+        this.connected = true;
     }
     private void ServerReceivesClientInput(){
         var packet = inputChannel.GetPacket();
@@ -35,10 +37,12 @@ public class MyServer {
                     // mover el cubo
                     lastActionIndex = action.inputIndex;
                     var cubeEntity = new CubeEntity(cubeServer);
+                    if(action.connected)
+                        this.connected = !connected;
                     cubeEntity.ApplyClientInput(action);
                 }
             }
-            SendACK(lastActionIndex);
+            // SendACK(lastActionIndex);
         }
     }
 
@@ -56,25 +60,27 @@ public class MyServer {
     public void UpdateServer() {
         accum += Time.deltaTime;
         ServerReceivesClientInput();
+        if(connected) 
+        {
+            // If we want to send 10 pckts persecond we need a sendRate of 1/10
+            float sendRate = (1f/pps);
+            if (accum >= sendRate) {
+                packetNumber += 1;
+                //serialize
+                var packet = Packet.Obtain();
+                var cubeEntity = new CubeEntity(cubeServer);
+                var snapshot = new Snapshot(packetNumber, cubeEntity);
+                snapshot.Serialize(packet.buffer);
+                packet.buffer.Flush();
 
-        // If we want to send 10 pckts persecond we need a sendRate of 1/10
-        float sendRate = (1f/pps);
-        if (accum >= sendRate) {
-            packetNumber += 1;
-            //serialize
-            var packet = Packet.Obtain();
-            var cubeEntity = new CubeEntity(cubeServer);
-            var snapshot = new Snapshot(packetNumber, cubeEntity);
-            snapshot.Serialize(packet.buffer);
-            packet.buffer.Flush();
-
-            string serverIP = "127.0.0.1";
-            int port = 9000;
-            var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-            channel.Send(packet, remoteEp);
-            packet.Free();
-            // Restart accum
-            accum -= sendRate;
+                string serverIP = "127.0.0.1";
+                int port = 9000;
+                var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
+                channel.Send(packet, remoteEp);
+                packet.Free();
+                // Restart accum
+                accum -= sendRate;
+            }
         }
     }
 

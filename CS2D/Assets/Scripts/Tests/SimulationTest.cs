@@ -36,10 +36,7 @@ public class SimulationTest : MonoBehaviour
 
     // Update is called once per frame
     void Update() {
-
-        if(connected) {
-          myServer.UpdateServer();
-        }
+        myServer.UpdateServer();        
         myClient.UpdateClient();
     }
 

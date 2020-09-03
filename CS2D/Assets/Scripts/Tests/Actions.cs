@@ -9,15 +9,18 @@ public class Actions
     public bool left;
     public bool right;
 
+    public bool connected;
+
     // 0 = jumps
     // 1 = left
     // 2 = right
 
-    public Actions(int index, bool jump, bool left, bool right) {
+    public Actions(int index, bool jump, bool left, bool right, bool connected) {
         this.inputIndex = index;
         this.jump       = jump;
         this.left       = left;
         this.right      = right;
+        this.connected  = connected;
     }
 
     public Actions() {
@@ -28,6 +31,7 @@ public class Actions
         buffer.PutBit(jump);
         buffer.PutBit(left);
         buffer.PutBit(right);
+        buffer.PutBit(connected);
     }
 
     public void DeserializeInput(BitBuffer buffer) {
@@ -35,6 +39,7 @@ public class Actions
         jump        = buffer.GetBit();
         left        = buffer.GetBit();
         right       = buffer.GetBit();
+        connected   = buffer.GetBit();
     }
     
 }
