@@ -18,7 +18,7 @@ public class ReliablePacket
 
     public bool CheckIfExpired(float currentTime)
     {
-        // Debug.Log(currentTime >= (sentTime + timeout));
+        Debug.Log(currentTime >= (sentTime + timeout));
         if(currentTime >= (sentTime + timeout))
             return true;
         return false;

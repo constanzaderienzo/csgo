@@ -15,6 +15,7 @@ public class MyClient {
     public int requiredSnapshots = 3;
     private bool clientPlaying = false;
     private float clientTime = 0f;
+    private float packetsTime = 0f;
     private int pps;
     private List<Actions> clientActions = new List<Actions>();
     private List<ReliablePacket> packetsToSend = new List<ReliablePacket>();
@@ -33,15 +34,13 @@ public class MyClient {
 
     public void UpdateClient() {
         
+        packetsTime += Time.deltaTime;
+
         GetServerACK();
-        // if(Input.GetKeyDown(KeyCode.A)) 
-        // {
-            GetClientInput();
-        // }
+        GetClientInput();
             
         ResendIfExpired();
 
-        // Debug.Log(packetsToSend.Count);
         var packet = channel.GetPacket();
 
         if (packet != null) {
@@ -69,15 +68,22 @@ public class MyClient {
         }
     }
 
-    private void SendReliablePacket(Packet packet, float timeout, float clientTime)
+    private void SendReliablePacket(Packet packet, float timeout)
     {
-        packetsToSend.Add(new ReliablePacket(packet, clientActions.Count, timeout, clientTime));
-        packet.buffer.Flush();
+        packetsToSend.Add(new ReliablePacket(packet, clientActions.Count, timeout, packetsTime));
         string serverIP = "127.0.0.1";
         int port = 9001;
         var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
         inputChannel.Send(packet, remoteEp);
-        packet.Free();
+    }
+
+    private void Resend(int index) 
+    {
+        string serverIP = "127.0.0.1";
+        int port = 9001;
+        var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
+        inputChannel.Send(packetsToSend[index].packet, remoteEp);
+        packetsToSend[index].sentTime = clientTime;
     }
     private void SendUnreliablePacket(Packet packet)
     {
@@ -110,36 +116,39 @@ public class MyClient {
         {
             currentAction.SerializeInput(packet.buffer);
         }
-        
-        SendReliablePacket(packet, 1f, clientTime);
+        packet.buffer.Flush();
+
+        SendReliablePacket(packet, 1f);
     }
     private void ResendIfExpired()
     {
-        int toRemove = 0;
         for (int i = 0; i < packetsToSend.Count; i++) 
         {
-            if(packetsToSend[i].CheckIfExpired(clientTime))
+            if(packetsToSend[i].CheckIfExpired(packetsTime))
             {
-                toRemove = i + 1;
-                SendReliablePacket(packetsToSend[i].packet, packetsToSend[i].timeout, clientTime);
-                Debug.Log("Resending " + packetsToSend[i].packetIndex + ": " + packetsToSend[i].packet.buffer.GetCurrentBitCount());
+                Resend(i);
             }
         }
-        Debug.Log("To remove " + toRemove);
-        packetsToSend.RemoveRange(0, toRemove);
     }
+
     private void CheckIfReliablePacketReceived(int index)
     {
-        int remove = -1;
+        List<int> toRemove = new List<int>();
         for (int i = 0; i < packetsToSend.Count; i++)
         {
             if(packetsToSend[i].packetIndex == index)
             {
-                remove = i;
+                toRemove.Add(i);
             }
         }
-        if(remove != -1)
-            packetsToSend.RemoveAt(remove);
+        if(toRemove.Count != 0)
+        {
+            foreach (int i in toRemove)
+            {
+                packetsToSend[i].packet.Free();
+                packetsToSend.RemoveAt(i);
+            }
+        }
     }
     private void GetServerACK() {
         var packet = ackChannel.GetPacket();
