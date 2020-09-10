@@ -8,7 +8,6 @@ public class MyClient {
     [SerializeField] private GameObject cubeClient;
     private Channel channel;
     private Channel inputChannel;
-
     private Channel ackChannel;
 
     List<Snapshot> interpolationBuffer = new List<Snapshot>();

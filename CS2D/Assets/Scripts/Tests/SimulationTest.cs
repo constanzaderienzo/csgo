@@ -15,15 +15,26 @@ public class SimulationTest : MonoBehaviour
     private bool connected = true;
     public int pps = 10;
 
+    private int channelPort;
+    private int inputPort;
+    private int ackPort;
+
     [SerializeField] private GameObject cubeServer;
     [SerializeField] private GameObject cubeClient;
 
 
+    void Awake()
+    {
+        channelPort = 9000;
+        inputPort = 9001;
+        ackPort = 9002;
+
+    }
     // Start is called before the first frame update
     void Start() {
-        channel = new Channel(9000);
-        inputChannel = new Channel(9001);
-        ackChannel = new Channel(9002);
+        channel = new Channel(channelPort);
+        inputChannel = new Channel(inputPort);
+        ackChannel = new Channel(ackPort);
         myClient = new MyClient(cubeClient, channel, inputChannel, ackChannel, pps);
         myServer = new MyServer(cubeServer, channel, inputChannel, ackChannel, pps);
     }

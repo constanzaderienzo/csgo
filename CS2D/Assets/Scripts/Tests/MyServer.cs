@@ -5,6 +5,8 @@ using UnityEngine;
 public class MyServer {
     [SerializeField] private GameObject cubeServer;
     private Channel channel;
+
+    private int ackPort;
     private Channel inputChannel;
     private Channel ackChannel;
 
@@ -12,16 +14,13 @@ public class MyServer {
     private int lastActionIndex = 0;
     private int packetNumber = 0;
     private int pps;
-
-    private bool connected;
-
+    
     public MyServer(GameObject cubeServer, Channel channel, Channel inputChannel, Channel ackChannel, int pps) {
         this.cubeServer = cubeServer;
         this.channel = channel;
         this.inputChannel = inputChannel;
         this.ackChannel = ackChannel;
         this.pps = pps;
-        this.connected = true;
     }
     private void ServerReceivesClientInput(){
         var packet = inputChannel.GetPacket();
@@ -56,14 +55,11 @@ public class MyServer {
     }
 
     public void UpdateServer() {
-        Debug.Log("Connected " +  connected);
         accum += Time.deltaTime;    
         ServerReceivesClientInput();
-        // If we want to send 10 pckts persecond we need a sendRate of 1/10
         float sendRate = (1f/pps);
         if (accum >= sendRate) {
             packetNumber += 1;
-            //serialize
             var packet = Packet.Obtain();
             var cubeEntity = new CubeEntity(cubeServer);
             var snapshot = new Snapshot(packetNumber, cubeEntity);
@@ -78,7 +74,5 @@ public class MyServer {
             // Restart accum
             accum -= sendRate;
         }
-        
     }
-
 }
