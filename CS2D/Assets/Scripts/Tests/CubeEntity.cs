@@ -8,8 +8,11 @@ public class CubeEntity
     public Vector3 eulerAngles;
     public GameObject cubeGameObject;
 
-    public CubeEntity(GameObject cubeGameObject) {
+    public string id;
+
+    public CubeEntity(GameObject cubeGameObject, string id) {
         this.cubeGameObject = cubeGameObject;
+        this.id = id;
     }
 
     public void Serialize(BitBuffer buffer) {
@@ -35,7 +38,7 @@ public class CubeEntity
     }
 
     public static CubeEntity CreateInterpolated(CubeEntity previous, CubeEntity next, float t) {
-        var cubeEntity = new CubeEntity(previous.cubeGameObject);
+        var cubeEntity = new CubeEntity(previous.cubeGameObject, previous.id);
         cubeEntity.position += Vector3.Lerp(previous.position, next.position, t);
         cubeEntity.eulerAngles += Vector3.Lerp(previous.eulerAngles, next.eulerAngles, t);
         return cubeEntity;

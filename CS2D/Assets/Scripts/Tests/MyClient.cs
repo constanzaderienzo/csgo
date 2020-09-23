@@ -20,6 +20,9 @@ public class MyClient {
     private List<ReliablePacket> packetsToSend = new List<ReliablePacket>();
     [SerializeField] int inputIndex;    
     
+    private List<Entity> players;
+    private string myId;
+    private string id;
     private int lastRemoved = 0;
 
 
@@ -31,7 +34,8 @@ public class MyClient {
         this.pps = pps;
     }
 
-    public void UpdateClient() {
+    public void UpdateClient() 
+    {
         
         packetsTime += Time.deltaTime;
 
@@ -43,8 +47,13 @@ public class MyClient {
         var packet = channel.GetPacket();
 
         if (packet != null) {
-            var cubeEntity = new CubeEntity(cubeClient);
-            var snapshot = new Snapshot(-1, cubeEntity);
+            List<CubeEntity> cubeEntities = new List<CubeEntity>();
+            foreach (Entity entity in players)
+            {
+                var cubeEntity = new CubeEntity(entity.gameObject, entity.id);   
+                cubeEntities.Add(cubeEntity);   
+            }
+            var snapshot = new Snapshot(-1, cubeEntities);
             var buffer = packet.buffer;
 
             snapshot.Deserialize(buffer);
@@ -67,6 +76,11 @@ public class MyClient {
         }
     }
 
+    public void AddClient(Entity entity) 
+    {
+        myId = entity.id;
+        players.Add(entity);
+    }
     private void SendReliablePacket(Packet packet, float timeout)
     {
         packetsToSend.Add(new ReliablePacket(packet, clientActions.Count, timeout, packetsTime));
@@ -94,10 +108,9 @@ public class MyClient {
     }
     private void GetClientInput() 
     {
-        
         inputIndex += 1;
-
         var action = new Actions(
+            myId,
             inputIndex, 
             Input.GetKeyDown(KeyCode.Space), 
             Input.GetKeyDown(KeyCode.LeftArrow), 

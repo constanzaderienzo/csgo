@@ -19,6 +19,7 @@ public class SimulationTest : MonoBehaviour
     private int inputPort;
     private int ackPort;
 
+
     [SerializeField] private GameObject cubeServer;
     [SerializeField] private GameObject cubeClient;
 
@@ -50,5 +51,4 @@ public class SimulationTest : MonoBehaviour
         myServer.UpdateServer();        
         myClient.UpdateClient();
     }
-
 }

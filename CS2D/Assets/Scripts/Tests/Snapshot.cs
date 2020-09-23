@@ -5,31 +5,48 @@ using UnityEngine;
 public class Snapshot 
 {
     public int packetNumber;
-    private CubeEntity cubeEntity;
+    private List<CubeEntity> cubeEntities;
 
-    public Snapshot(int packetNumber, CubeEntity cubeEntity) {
+    public Snapshot(int packetNumber, List<CubeEntity> cubeEntities) {
         this.packetNumber = packetNumber;
-        this.cubeEntity = cubeEntity;
+        this.cubeEntities = cubeEntities;
     }
 
     public void Serialize(BitBuffer buffer) {
         buffer.PutInt(packetNumber);
-        cubeEntity.Serialize(buffer);
+        foreach (CubeEntity cubeEntity in cubeEntities)
+        {
+            cubeEntity.Serialize(buffer);   
+        }
     }
 
     public void Deserialize(BitBuffer buffer) {
         packetNumber = buffer.GetInt();
-        cubeEntity.Deserialize(buffer);
+        foreach (CubeEntity cubeEntity in cubeEntities)
+        {
+            cubeEntity.Deserialize(buffer);
+        }
     }
 
     public static Snapshot CreateInterpolated(Snapshot previous, Snapshot next, float t) {
-        var cubeEntity = CubeEntity.CreateInterpolated(previous.cubeEntity, next.cubeEntity, t);
-        var snapshot = new Snapshot(-1, cubeEntity);
+        List<CubeEntity> interpolatedCubeEntities = new List<CubeEntity>();
+
+        for (int i = 0; i < previous.cubeEntities.Count; i++)
+        {
+            var cubeEntity = CubeEntity.CreateInterpolated(previous.cubeEntities[i], next.cubeEntities[i], t);
+            interpolatedCubeEntities.Add(cubeEntity);
+        }
+        
+        var snapshot = new Snapshot(-1, interpolatedCubeEntities);
         return snapshot;
     }
 
     public void Apply() {
-        cubeEntity.Apply();
+        
+        foreach (CubeEntity cubeEntity in cubeEntities)
+        {
+            cubeEntity.Apply();
+        }
     }
 
     public void SerializeInput(List<List<int>> clientActions, BitBuffer buffer) {

@@ -11,16 +11,18 @@ public class MyServer {
     private Channel ackChannel;
 
     private float accum = 0f;
-    private int lastActionIndex = 0;
+    private Dictionary<string, int> lastActionIndex;
     private int packetNumber = 0;
     private int pps;
-    
+    List<Entity> players;
     public MyServer(GameObject cubeServer, Channel channel, Channel inputChannel, Channel ackChannel, int pps) {
         this.cubeServer = cubeServer;
         this.channel = channel;
         this.inputChannel = inputChannel;
         this.ackChannel = ackChannel;
         this.pps = pps;
+        this.players = new List<Entity>();
+        this.lastActionIndex = new Dictionary<string, int>();
     }
     private void ServerReceivesClientInput(){
         var packet = inputChannel.GetPacket();
@@ -28,18 +30,26 @@ public class MyServer {
         if (packet != null) {
             var buffer = packet.buffer;
             int actionsCount = buffer.GetInt();
-
+            string index = null;
             for (int i = 0; i < actionsCount; i++) {
                 Actions action = new Actions();
                 action.DeserializeInput(buffer);
-                if(action.inputIndex > lastActionIndex) {
+                index = action.id;
+                if(action.inputIndex > lastActionIndex[action.id]) {
                     // mover el cubo
-                    lastActionIndex = action.inputIndex;
-                    var cubeEntity = new CubeEntity(cubeServer);
+                    lastActionIndex[action.id] = action.inputIndex;
+                    GameObject cube = null;
+                    foreach (Entity player in players)
+                    {
+                        if(player.id == action.id){
+                            cube = player.gameObject;
+                        }   
+                    }
+                    var cubeEntity = new CubeEntity(cube, action.id);
                     cubeEntity.ApplyClientInput(action);
                 }
             }
-            SendACK(lastActionIndex);
+            SendACK(lastActionIndex[index]);
         }
     }
 
@@ -61,8 +71,13 @@ public class MyServer {
         if (accum >= sendRate) {
             packetNumber += 1;
             var packet = Packet.Obtain();
-            var cubeEntity = new CubeEntity(cubeServer);
-            var snapshot = new Snapshot(packetNumber, cubeEntity);
+            List<CubeEntity> cubeEntities = new List<CubeEntity>();
+            for (int i = 0; i < players.Count; i++)
+            {
+                var cubeEntity = new CubeEntity(players[i].gameObject, players[i].id);
+                cubeEntities.Add(cubeEntity);
+            }
+            var snapshot = new Snapshot(packetNumber, cubeEntities);
             snapshot.Serialize(packet.buffer);
             packet.buffer.Flush();
 
