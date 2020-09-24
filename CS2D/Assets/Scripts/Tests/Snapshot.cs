@@ -5,45 +5,53 @@ using UnityEngine;
 public class Snapshot 
 {
     public int packetNumber;
-    private List<CubeEntity> cubeEntities;
+    public CubeEntity cubeEntity;
+    public WorldInfo worldInfo;
 
-    public Snapshot(int packetNumber, List<CubeEntity> cubeEntities) {
+    public Snapshot(int packetNumber, WorldInfo worldInfo) {
         this.packetNumber = packetNumber;
-        this.cubeEntities = cubeEntities;
+        this.worldInfo = worldInfo;
+    }
+
+    public Snapshot(int packetNumber, CubeEntity cubeEntity, WorldInfo worldInfo) {
+        this.packetNumber = packetNumber;
+        this.cubeEntity = cubeEntity;
+        this.worldInfo = worldInfo;
+    }
+    public Snapshot(CubeEntity cubeEntity) {
+        this.packetNumber = -1;
+        this.cubeEntity = cubeEntity;
     }
 
     public void Serialize(BitBuffer buffer) {
         buffer.PutInt(packetNumber);
-        foreach (CubeEntity cubeEntity in cubeEntities)
-        {
-            cubeEntity.Serialize(buffer);   
-        }
+        worldInfo.Serialize(buffer);
     }
 
     public void Deserialize(BitBuffer buffer) {
         packetNumber = buffer.GetInt();
-        foreach (CubeEntity cubeEntity in cubeEntities)
-        {
-            cubeEntity.Deserialize(buffer);
-        }
+        worldInfo = WorldInfo.Deserialize(buffer);
     }
 
     public static Snapshot CreateInterpolated(Snapshot previous, Snapshot next, float t) {
-        List<CubeEntity> interpolatedCubeEntities = new List<CubeEntity>();
+        Dictionary<int, CubeEntity> interpolatedCubeEntities = new Dictionary<int, CubeEntity>();
 
-        for (int i = 0; i < previous.cubeEntities.Count; i++)
+        for (int i = 0; i < previous.worldInfo.players.Count; i++)
         {
-            var cubeEntity = CubeEntity.CreateInterpolated(previous.cubeEntities[i], next.cubeEntities[i], t);
-            interpolatedCubeEntities.Add(cubeEntity);
+            var previousCube = previous.worldInfo.players[i];
+            var nextCube = next.worldInfo.players[i];
+            var cubeEntity = CubeEntity.CreateInterpolated(previousCube, nextCube, t);
+            interpolatedCubeEntities.Add(i, cubeEntity);
         }
         
-        var snapshot = new Snapshot(-1, interpolatedCubeEntities);
+        WorldInfo interpolatedWorldInfo = new WorldInfo(interpolatedCubeEntities);
+        var snapshot = new Snapshot(-1, interpolatedWorldInfo);
         return snapshot;
     }
 
     public void Apply() {
         
-        foreach (CubeEntity cubeEntity in cubeEntities)
+        foreach (CubeEntity cubeEntity in worldInfo.players.Values)
         {
             cubeEntity.Apply();
         }

@@ -3,26 +3,32 @@ using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
 public class MyServer {
-    [SerializeField] private GameObject cubeServer;
+    private GameObject serverPrefab;
     private Channel channel;
-
     private int ackPort;
     private Channel inputChannel;
     private Channel ackChannel;
-
     private float accum = 0f;
-    private Dictionary<string, int> lastActionIndex;
+    private Dictionary<int, int> lastActionIndex;
     private int packetNumber = 0;
     private int pps;
-    List<Entity> players;
-    public MyServer(GameObject cubeServer, Channel channel, Channel inputChannel, Channel ackChannel, int pps) {
-        this.cubeServer = cubeServer;
+    private Dictionary<int, GameObject> clientsCubes;
+    private Dictionary<int, ClientInfo> clients;
+
+    public MyServer(GameObject serverPrefab, Channel channel, Channel inputChannel, Channel ackChannel, int pps) {
+        this.serverPrefab = serverPrefab;
         this.channel = channel;
         this.inputChannel = inputChannel;
         this.ackChannel = ackChannel;
         this.pps = pps;
-        this.players = new List<Entity>();
-        this.lastActionIndex = new Dictionary<string, int>();
+        this.clientsCubes = new Dictionary<int, GameObject>();
+        this.clients = new Dictionary<int, ClientInfo>();
+        // clientsCubes.Add(1, new GameObject());
+        // string serverIP = "127.0.0.1";
+        // int port = 9002;
+        // var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
+        // clients.Add(1, new ClientInfo(1, remoteEp));
+        this.lastActionIndex = new Dictionary<int, int>();
     }
     private void ServerReceivesClientInput(){
         var packet = inputChannel.GetPacket();
@@ -30,38 +36,47 @@ public class MyServer {
         if (packet != null) {
             var buffer = packet.buffer;
             int actionsCount = buffer.GetInt();
-            string index = null;
+            int index = -1;
             for (int i = 0; i < actionsCount; i++) {
                 Actions action = new Actions();
                 action.DeserializeInput(buffer);
                 index = action.id;
+                if(!lastActionIndex.ContainsKey(action.id))
+                    lastActionIndex.Add(action.id, -1);
                 if(action.inputIndex > lastActionIndex[action.id]) {
                     // mover el cubo
+                    Debug.Assert(action.id == 1);
                     lastActionIndex[action.id] = action.inputIndex;
-                    GameObject cube = null;
-                    foreach (Entity player in players)
-                    {
-                        if(player.id == action.id){
-                            cube = player.gameObject;
-                        }   
-                    }
-                    var cubeEntity = new CubeEntity(cube, action.id);
-                    cubeEntity.ApplyClientInput(action);
+                    var rigidBody = clientsCubes[action.id].GetComponent<Rigidbody>();
+                    ApplyClientInput(action, rigidBody);
                 }
             }
-            SendACK(lastActionIndex[index]);
+            SendACK(lastActionIndex[index], index);
         }
     }
 
-    private void SendACK(int inputIndex) {
+    private void SendACK(int inputIndex, int clientId) {
         var packet = Packet.Obtain();
         packet.buffer.PutInt(inputIndex);
         packet.buffer.Flush();
-        string serverIP = "127.0.0.1";
-        int port = 9002;
-        var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-        ackChannel.Send(packet, remoteEp);
+        ackChannel.Send(packet, clients[clientId].ipEndPoint);
         packet.Free();
+    }
+
+    private void ApplyClientInput(Actions action, Rigidbody rigidbody)
+    {
+        // 0 = jumps
+        // 1 = left
+        // 2 = right
+        if (action.jump) {
+           rigidbody.AddForceAtPosition(Vector3.up * 5, Vector3.zero, ForceMode.Impulse);
+        }
+        if (action.left) {
+           rigidbody.AddForceAtPosition(Vector3.left * 5, Vector3.zero, ForceMode.Impulse);
+        }
+        if (action.right) {
+           rigidbody.AddForceAtPosition(Vector3.right * 5, Vector3.zero, ForceMode.Impulse);
+        }
     }
 
     public void UpdateServer() {
@@ -69,25 +84,41 @@ public class MyServer {
         ServerReceivesClientInput();
         float sendRate = (1f/pps);
         if (accum >= sendRate) {
-            packetNumber += 1;
-            var packet = Packet.Obtain();
-            List<CubeEntity> cubeEntities = new List<CubeEntity>();
-            for (int i = 0; i < players.Count; i++)
-            {
-                var cubeEntity = new CubeEntity(players[i].gameObject, players[i].id);
-                cubeEntities.Add(cubeEntity);
-            }
-            var snapshot = new Snapshot(packetNumber, cubeEntities);
-            snapshot.Serialize(packet.buffer);
-            packet.buffer.Flush();
-
-            string serverIP = "127.0.0.1";
-            int port = 9000;
-            var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-            channel.Send(packet, remoteEp);
-            packet.Free();
+            SendWorldInfo();
             // Restart accum
             accum -= sendRate;
         }
     }
+
+    private void SendWorldInfo()
+    {
+        WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
+        foreach (var clientId in clients.Keys)
+        {
+            //serialize
+            var packet = Packet.Obtain();
+            packetNumber += 1;
+            CubeEntity cubeEntity = new CubeEntity(clientsCubes[clientId]);
+            Snapshot currentSnapshot = new Snapshot(packetNumber, cubeEntity, currentWorldInfo);
+            currentSnapshot.Serialize(packet.buffer);
+            packet.buffer.Flush();
+            string serverIP = "127.0.0.1";
+            int port = 9000;
+            var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
+            channel.Send(packet, clients[clientId].ipEndPoint);
+            packet.Free();
+        }  
+    }
+
+    private WorldInfo GenerateCurrentWorldInfo()
+     {
+        WorldInfo currentWorldInfo = new WorldInfo();
+        foreach (var clientId in clientsCubes.Keys)
+        {
+            CubeEntity clientEntity = new CubeEntity(clientsCubes[clientId]);
+            currentWorldInfo.addPlayer(clientId, clientEntity);
+        }
+
+        return currentWorldInfo;
+     }
 }

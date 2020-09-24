@@ -64,10 +64,9 @@
      <Compile Include="Assets\Scripts\Server\Player.cs" />
      <Compile Include="Assets\Scripts\Server\PlayerData.cs" />
      <Compile Include="Assets\Scripts\Tests\Actions.cs" />
+     <Compile Include="Assets\Scripts\Tests\ClientInfo.cs" />
      <Compile Include="Assets\Scripts\Tests\ConnectionTest.cs" />
      <Compile Include="Assets\Scripts\Tests\CubeEntity.cs" />
-     <Compile Include="Assets\Scripts\Tests\Entity.cs" />
-     <Compile Include="Assets\Scripts\Tests\GameClient.cs" />
      <Compile Include="Assets\Scripts\Tests\MyClient.cs" />
      <Compile Include="Assets\Scripts\Tests\MyServer.cs" />
      <Compile Include="Assets\Scripts\Tests\ReliablePacket.cs" />
@@ -75,6 +74,7 @@
      <Compile Include="Assets\Scripts\Tests\Snapshot.cs" />
      <Compile Include="Assets\Scripts\Tests\TestClient.cs" />
      <Compile Include="Assets\Scripts\Tests\TestServer.cs" />
+     <Compile Include="Assets\Scripts\Tests\WorldInfo.cs" />
      <Compile Include="Assets\Scripts\Utils\GameObjectPool.cs" />
      <Compile Include="Assets\Scripts\Utils\GenericPool.cs" />
      <Compile Include="Assets\Scripts\Utils\GenericPoolableObject.cs" />

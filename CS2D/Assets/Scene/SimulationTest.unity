@@ -242,7 +242,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   pps: 60
   cubeServer: {fileID: 1277577276}
-  cubeClient: {fileID: 0}
+  cubePrefab: {fileID: 760269822673042127, guid: e49332fc48eea9446a7e279acf982cd4,
+    type: 3}
 --- !u!4 &803758058
 Transform:
   m_ObjectHideFlags: 0

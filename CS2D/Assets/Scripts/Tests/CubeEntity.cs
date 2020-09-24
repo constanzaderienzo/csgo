@@ -8,11 +8,8 @@ public class CubeEntity
     public Vector3 eulerAngles;
     public GameObject cubeGameObject;
 
-    public string id;
-
-    public CubeEntity(GameObject cubeGameObject, string id) {
+    public CubeEntity(GameObject cubeGameObject) {
         this.cubeGameObject = cubeGameObject;
-        this.id = id;
     }
 
     public void Serialize(BitBuffer buffer) {
@@ -26,19 +23,21 @@ public class CubeEntity
         buffer.PutFloat(transform.eulerAngles.z);
     }
 
-    public void Deserialize(BitBuffer buffer) {
-        position = new Vector3();
-        eulerAngles = new Vector3();
-        position.x = buffer.GetFloat();
-        position.y = buffer.GetFloat();
-        position.z = buffer.GetFloat();
-        eulerAngles.x = buffer.GetFloat();
-        eulerAngles.y = buffer.GetFloat();
-        eulerAngles.z = buffer.GetFloat();
+    public static CubeEntity Deserialize(BitBuffer buffer) {
+        CubeEntity newCube = new CubeEntity(null);
+        newCube.position = new Vector3();
+        newCube.eulerAngles = new Vector3();
+        newCube.position.x = buffer.GetFloat();
+        newCube.position.y = buffer.GetFloat();
+        newCube.position.z = buffer.GetFloat();
+        newCube.eulerAngles.x = buffer.GetFloat();
+        newCube.eulerAngles.y = buffer.GetFloat();
+        newCube.eulerAngles.z = buffer.GetFloat();
+        return newCube;
     }
 
     public static CubeEntity CreateInterpolated(CubeEntity previous, CubeEntity next, float t) {
-        var cubeEntity = new CubeEntity(previous.cubeGameObject, previous.id);
+        var cubeEntity = new CubeEntity(previous.cubeGameObject);
         cubeEntity.position += Vector3.Lerp(previous.position, next.position, t);
         cubeEntity.eulerAngles += Vector3.Lerp(previous.eulerAngles, next.eulerAngles, t);
         return cubeEntity;
@@ -49,19 +48,5 @@ public class CubeEntity
         cubeGameObject.GetComponent<Transform>().eulerAngles = eulerAngles;
     }
 
-    public void ApplyClientInput(Actions action) {
-        // 0 = jumps
-        // 1 = left
-        // 2 = right
-        if (action.jump) {
-            cubeGameObject.GetComponent<Rigidbody>().AddForceAtPosition(Vector3.up * 5, Vector3.zero, ForceMode.Impulse);
-        }
-        if (action.left) {
-            cubeGameObject.GetComponent<Rigidbody>().AddForceAtPosition(Vector3.left * 5, Vector3.zero, ForceMode.Impulse);
-        }
-        if (action.right) {
-            cubeGameObject.GetComponent<Rigidbody>().AddForceAtPosition(Vector3.right * 5, Vector3.zero, ForceMode.Impulse);
-        }
 
-    }
 }

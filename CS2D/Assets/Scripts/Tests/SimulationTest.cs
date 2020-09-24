@@ -19,9 +19,10 @@ public class SimulationTest : MonoBehaviour
     private int inputPort;
     private int ackPort;
 
+    private Dictionary<int, CubeEntity> clients;
 
     [SerializeField] private GameObject cubeServer;
-    [SerializeField] private GameObject cubeClient;
+    [SerializeField] private GameObject cubePrefab;
 
 
     void Awake()
@@ -29,14 +30,14 @@ public class SimulationTest : MonoBehaviour
         channelPort = 9000;
         inputPort = 9001;
         ackPort = 9002;
-
+        clients = new Dictionary<int, CubeEntity>();
     }
     // Start is called before the first frame update
     void Start() {
         channel = new Channel(channelPort);
         inputChannel = new Channel(inputPort);
         ackChannel = new Channel(ackPort);
-        myClient = new MyClient(cubeClient, channel, inputChannel, ackChannel, pps);
+        myClient = new MyClient(cubePrefab, channel, inputChannel, ackChannel, pps, 1);
         myServer = new MyServer(cubeServer, channel, inputChannel, ackChannel, pps);
     }
 
