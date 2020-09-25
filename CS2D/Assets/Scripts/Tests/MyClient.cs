@@ -5,10 +5,16 @@ using UnityEngine;
 
 public class MyClient {
 
+    public enum PacketType
+    {
+        SNAPSHOT    = 0,
+        INPUT       = 1,
+        ACK         = 2,
+        PLAYER_JOINED_GAME   = 3,
+        NEW_PLAYER_BROADCAST  = 4
+    }
     private GameObject playerPrefab;
     private Channel channel;
-    private Channel inputChannel;
-    private Channel ackChannel;
 
     List<Snapshot> interpolationBuffer = new List<Snapshot>();
     public int requiredSnapshots = 3;
@@ -24,41 +30,58 @@ public class MyClient {
     private int lastRemoved;
 
 
-    public MyClient(GameObject playerPrefab, Channel channel, Channel inputChannel, Channel ackChannel, int pps, int id) {
+    public MyClient(GameObject playerPrefab, Channel channel, int pps, int id) {
         this.playerPrefab = playerPrefab;
         this.channel = channel;
-        this.inputChannel = inputChannel;
-        this.ackChannel = ackChannel;
         this.pps = pps;
         this.players = new Dictionary<int, GameObject>();
         this.id = id;
         this.lastRemoved = 0;
         this.clientActions = new List<Actions>();
     }
-
+    
     public void UpdateClient() 
     {
-        
         packetsTime += Time.deltaTime;
-
-        GetServerACK();
-        GetClientInput();
             
+        SendClientInput();
         ResendIfExpired();
 
         var packet = channel.GetPacket();
+        ProcessPacket(packet);
 
-        if (packet != null) {
-            CubeEntity cubeEntity = new CubeEntity(players[id]);
-            Snapshot snapshot = new Snapshot(cubeEntity);
-            snapshot.Deserialize(packet.buffer);
-
-            int size = interpolationBuffer.Count;
-            if(size == 0 || snapshot.packetNumber > interpolationBuffer[size - 1].packetNumber) {
-                interpolationBuffer.Add(snapshot);
+    }
+    
+    private void ProcessPacket(Packet packet)
+    {
+        if(packet!=null)
+        {
+            int packetType = packet.buffer.GetInt();
+            switch(packetType)
+            {
+                case (int) PacketType.SNAPSHOT:
+                    GetSnapshot(packet);
+                    break;
+                case (int) PacketType.ACK:
+                    GetServerACK(packet);
+                    break;
+                case (int) PacketType.PLAYER_JOINED_GAME:
+                break;
+                case (int) PacketType.NEW_PLAYER_BROADCAST:
+                break;
             }
         }
-
+    }
+    
+    private void GetSnapshot(Packet packet)
+    {
+        CubeEntity cubeEntity = new CubeEntity(players[id]);
+        Snapshot snapshot = new Snapshot(cubeEntity);
+        snapshot.Deserialize(packet.buffer);
+        int size = interpolationBuffer.Count;
+        if(size == 0 || snapshot.packetNumber > interpolationBuffer[size - 1].packetNumber) {
+            interpolationBuffer.Add(snapshot);
+        }
         if (interpolationBuffer.Count >= requiredSnapshots) {
             clientPlaying = true;
         }
@@ -70,7 +93,7 @@ public class MyClient {
             Interpolate();
         }
     }
-
+    
     public void AddClient(int playerId, CubeEntity cubeEntity) 
     {
         if (!players.ContainsKey(playerId))
@@ -91,32 +114,35 @@ public class MyClient {
         }
         //Send ACK
     }
+    
     private void SendReliablePacket(Packet packet, float timeout)
     {
         packetsToSend.Add(new ReliablePacket(packet, clientActions.Count, timeout, packetsTime));
         string serverIP = "127.0.0.1";
         int port = 9001;
         var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-        inputChannel.Send(packet, remoteEp);
+        channel.Send(packet, remoteEp);
     }
-
+    
     private void Resend(int index) 
     {
         string serverIP = "127.0.0.1";
         int port = 9001;
         var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-        inputChannel.Send(packetsToSend[index].packet, remoteEp);
+        channel.Send(packetsToSend[index].packet, remoteEp);
         packetsToSend[index].sentTime = clientTime;
     }
+    
     private void SendUnreliablePacket(Packet packet)
     {
         string serverIP = "127.0.0.1";
         int port = 9001;
         var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-        inputChannel.Send(packet, remoteEp);
+        channel.Send(packet, remoteEp);
         packet.Free();
     }
-    private void GetClientInput() 
+    
+    private void SendClientInput() 
     {
         inputIndex += 1;
         var action = new Actions(
@@ -129,8 +155,9 @@ public class MyClient {
         );
 
         clientActions.Add(action);
-        var packet = Packet.Obtain();
         
+        var packet = Packet.Obtain();
+        packet.buffer.PutInt((int) PacketType.INPUT);
         packet.buffer.PutInt(clientActions.Count);
 
         foreach (Actions currentAction in clientActions)
@@ -141,6 +168,7 @@ public class MyClient {
 
         SendReliablePacket(packet, 1f);
     }
+    
     private void ResendIfExpired()
     {
         for (int i = 0; i < packetsToSend.Count; i++) 
@@ -151,6 +179,7 @@ public class MyClient {
             }
         }
     }
+    
     private void CheckIfReliablePacketReceived(int index)
     {
         List<int> toRemove = new List<int>();
@@ -170,8 +199,8 @@ public class MyClient {
             }
         }
     }
-    private void GetServerACK() {
-        var packet = ackChannel.GetPacket();
+    
+    private void GetServerACK(Packet packet) {
         // Capaz tiene que ser un while
         if (packet != null) {
             int inputIndex = packet.buffer.GetInt();
@@ -183,6 +212,7 @@ public class MyClient {
             CheckIfReliablePacketReceived(inputIndex);
         }
     }
+    
     private void Interpolate() {
         var previousTime = (interpolationBuffer[0]).packetNumber * (1f/pps);
         var nextTime =  interpolationBuffer[1].packetNumber * (1f/pps);
@@ -194,15 +224,13 @@ public class MyClient {
             interpolationBuffer.RemoveAt(0);
         }
     }
-
-
+    
     public void Spawn(CubeEntity clientCube)
     {
-            Debug.Log("Spawning own2 clientId = " + id);
             Vector3 position = clientCube.position;
             Quaternion rotation = Quaternion.Euler(clientCube.eulerAngles);
             players[id] = Object.Instantiate(playerPrefab, position, rotation) as GameObject;
-    }
+    }  
     
     public void SpawnPlayer(int playerId, CubeEntity playerCube)
     {

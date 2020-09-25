@@ -37,8 +37,8 @@ public class SimulationTest : MonoBehaviour
         channel = new Channel(channelPort);
         inputChannel = new Channel(inputPort);
         ackChannel = new Channel(ackPort);
-        myClient = new MyClient(cubePrefab, channel, inputChannel, ackChannel, pps, 1);
-        myServer = new MyServer(cubeServer, channel, inputChannel, ackChannel, pps);
+        myClient = new MyClient(cubePrefab, channel, pps, 1);
+        myServer = new MyServer(cubeServer, channel, pps);
     }
 
     private void OnDestroy() {
