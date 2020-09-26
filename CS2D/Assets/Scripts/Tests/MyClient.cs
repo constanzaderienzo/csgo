@@ -26,11 +26,11 @@ public class MyClient {
     private List<ReliablePacket> packetsToSend = new List<ReliablePacket>();
     [SerializeField] int inputIndex;    
     private Dictionary<int, GameObject> players;
-    private int id;
+    public int id;
     private int lastRemoved;
 
 
-    public MyClient(GameObject playerPrefab, Channel channel, IPEndPoint serverEndpoint ,int pps, int id) {
+    public MyClient(GameObject playerPrefab, Channel channel, IPEndPoint serverEndpoint, int pps, int id) {
         this.playerPrefab = playerPrefab;
         this.channel = channel;
         this.serverEndpoint = serverEndpoint;
@@ -69,13 +69,16 @@ public class MyClient {
                 case (int) PacketType.PLAYER_JOINED_GAME:
                 break;
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
-                break;
+                    NewPlayerBroadcastEvent newPlayer = NewPlayerBroadcastEvent.Deserialize(packet.buffer);
+                    AddClient(newPlayer.playerId, newPlayer.newPlayer);
+                    break;
             }
         }
     }
     
     private void GetSnapshot(Packet packet)
     {
+        Debug.Log("Getting snapshot");
         CubeEntity cubeEntity = new CubeEntity(players[id]);
         Snapshot snapshot = new Snapshot(cubeEntity);
         snapshot.Deserialize(packet.buffer);

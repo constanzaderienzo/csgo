@@ -91,6 +91,11 @@ public class SimulationTest : MonoBehaviour
             {
                 int clientId = packet.buffer.GetInt();
                 Debug.Log("Received player ack " + clientId);
+                if(clientId == 1)
+                {
+                    client.id = clientId;
+                    CubeEntity cube = new CubeEntity(clientPrefab);
+                }
                 return true;
             }
         }

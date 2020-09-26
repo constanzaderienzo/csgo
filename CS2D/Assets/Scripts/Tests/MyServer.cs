@@ -116,9 +116,11 @@ public class MyServer {
 
     private void SendWorldInfo()
     {
+        
         WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
         foreach (var clientId in clients.Keys)
         {
+            Debug.Log("Sending snapshot to client " + clientId);
             //serialize
             var packet = Packet.Obtain();
             packetNumber += 1;
