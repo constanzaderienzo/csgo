@@ -55,24 +55,31 @@ public class MyClient {
     
     private void ProcessPacket(Packet packet)
     {
-        if(packet!=null)
+        while (packet != null)
         {
             int packetType = packet.buffer.GetInt();
             switch(packetType)
             {
                 case (int) PacketType.SNAPSHOT:
+                    Debug.Log("Packet of type SNAPSHOT");
                     GetSnapshot(packet);
                     break;
                 case (int) PacketType.ACK:
+                    Debug.Log("Packet of type ACK");
                     GetServerACK(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
                 break;
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
+                    Debug.Log("Packet of type BROADCAST NEW PLAYER");
                     NewPlayerBroadcastEvent newPlayer = NewPlayerBroadcastEvent.Deserialize(packet.buffer);
                     AddClient(newPlayer.playerId, newPlayer.newPlayer);
                     break;
+                default:
+                    Debug.Log("Unrecognized type in client");
+                    break;
             }
+            packet = channel.GetPacket();
         }
     }
     
@@ -197,7 +204,7 @@ public class MyClient {
     
     private void GetServerACK(Packet packet) {
         // Capaz tiene que ser un while
-        if (packet != null) {
+        while (packet != null) {
             int inputIndex = packet.buffer.GetInt();
             if(lastRemoved < inputIndex) 
             {
@@ -205,6 +212,7 @@ public class MyClient {
                 lastRemoved = inputIndex;
             }
             CheckIfReliablePacketReceived(inputIndex);
+            packet = channel.GetPacket();
         }
     }
     

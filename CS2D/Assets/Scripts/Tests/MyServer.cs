@@ -38,33 +38,40 @@ public class MyServer {
     public void UpdateServer() {
         accum += Time.deltaTime;    
         serverTime += Time.deltaTime;
-        var packet = channel.GetPacket();
-        ProcessPacket(packet);
+        ProcessPacket();
         float sendRate = (1f/pps);
         if (accum >= sendRate) {
-            SendWorldInfo();
+            SendSnapshot();
             // Restart accum
             accum -= sendRate;
         }
     }
 
-    private void ProcessPacket(Packet packet)
+    private void ProcessPacket()
     {
-        if(packet != null)
+        var packet = channel.GetPacket();
+        while (packet != null)
         {
             int packetType = packet.buffer.GetInt();
             switch(packetType)
             {
                 case (int) PacketType.INPUT:
+                    Debug.Log("Packet of type INPUT");
                     ServerReceivesClientInput(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
+                    Debug.Log("Packet of type PLAYER JOINED");
                     JoinPlayer(packet);
                     break;
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
+                    Debug.Log("Packet of type BROADCAST NEW PLAYER");
                     ClientReceivedNewPlayerBroadcast(packet);
                     break;
+                default:
+                    Debug.Log("Unrecognized type in server");
+                    break;
             }
+            packet = channel.GetPacket();
         }
     }
 
@@ -90,6 +97,7 @@ public class MyServer {
     }
 
     private void SendACK(int inputIndex, IPEndPoint clientEndpoint, int ackType) {
+        Debug.Log("Sending " + ackType + "ack to " + clientEndpoint.Port);
         var packet = Packet.Obtain();
         packet.buffer.PutInt(ackType);
         packet.buffer.PutInt(inputIndex);
@@ -114,16 +122,16 @@ public class MyServer {
         }
     }
 
-    private void SendWorldInfo()
-    {
-        
+    private void SendSnapshot()
+    {    
         WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
         foreach (var clientId in clients.Keys)
         {
-            Debug.Log("Sending snapshot to client " + clientId);
+            Debug.Log("Sending snapshot to client " + clientId + "to port " + clients[clientId].ipEndPoint.Port);
             //serialize
             var packet = Packet.Obtain();
             packetNumber += 1;
+            packet.buffer.PutInt((int) PacketType.SNAPSHOT);
             CubeEntity cubeEntity = new CubeEntity(clientsCubes[clientId]);
             Snapshot currentSnapshot = new Snapshot(packetNumber, cubeEntity, currentWorldInfo);
             currentSnapshot.Serialize(packet.buffer);
@@ -149,6 +157,7 @@ public class MyServer {
     {
         int clientId = packet.buffer.GetInt();
         IPEndPoint endPoint = packet.fromEndPoint;
+        Debug.Log("Client with id " + clientId + " and endpoint " + endPoint.Address + endPoint.Port + " was added");
         var last = clients.Keys.Count + 1;
         ClientInfo clientInfo = new ClientInfo(clientId, endPoint);
         clients.Add(last, clientInfo);
@@ -174,7 +183,7 @@ public class MyServer {
         CubeEntity newPlayer = new CubeEntity(clientsCubes[newPlayerId], position, rotation);
         foreach (var id in clients.Keys)
         {
-            Debug.Log("Sending event to playerId = " + id);
+            Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);
             IPEndPoint clientEndpoint = clients[id].ipEndPoint;
             var packet = Packet.Obtain();
             packet.buffer.PutInt((int) PacketType.NEW_PLAYER_BROADCAST);

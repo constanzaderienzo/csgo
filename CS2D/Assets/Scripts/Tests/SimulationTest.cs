@@ -41,7 +41,10 @@ public class SimulationTest : MonoBehaviour
     }
 
     private void OnDestroy() {
-        channel.Disconnect();
+        foreach(MyClient client in clients.Values)
+        {
+            client.GetChannel().Disconnect();
+        }
     }
 
     // Update is called once per frame
@@ -83,12 +86,15 @@ public class SimulationTest : MonoBehaviour
     }
     private bool ReceivedPlayerAck(MyClient client)
     {
+        Channel channel = client.GetChannel();
+        Debug.Log("Checking if player ack was received in " + channel);
         var packet = client.GetChannel().GetPacket();
-        if(packet != null)
+        while (packet != null)
         {
             int packetType = packet.buffer.GetInt();
             if(packetType == (int) PacketType.PLAYER_JOINED_GAME)
             {
+                Debug.Log("Packet of type PLAYER JOINED ACK in sim test");
                 int clientId = packet.buffer.GetInt();
                 Debug.Log("Received player ack " + clientId);
                 if(clientId == 1)
@@ -103,6 +109,7 @@ public class SimulationTest : MonoBehaviour
     }
     private void SendJoinToServer(int newPlayerId)
     {
+        Debug.Log("Sending join to server for player " + newPlayerId);
         Packet packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.PLAYER_JOINED_GAME);
         packet.buffer.PutInt(newPlayerId);
@@ -117,6 +124,7 @@ public class SimulationTest : MonoBehaviour
         {
             if(sentPlayerJoinEvents[i].CheckIfExpired(time))
             {
+                Debug.Log("Resending");
                 Resend(i);
             }
         }
