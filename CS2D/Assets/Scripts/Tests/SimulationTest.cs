@@ -87,14 +87,12 @@ public class SimulationTest : MonoBehaviour
     private bool ReceivedPlayerAck(MyClient client)
     {
         Channel channel = client.GetChannel();
-        Debug.Log("Checking if player ack was received in " + channel);
         var packet = client.GetChannel().GetPacket();
         while (packet != null)
         {
             int packetType = packet.buffer.GetInt();
             if(packetType == (int) PacketType.PLAYER_JOINED_GAME)
             {
-                Debug.Log("Packet of type PLAYER JOINED ACK in sim test");
                 int clientId = packet.buffer.GetInt();
                 Debug.Log("Received player ack " + clientId);
                 if(clientId == 1)
@@ -109,7 +107,6 @@ public class SimulationTest : MonoBehaviour
     }
     private void SendJoinToServer(int newPlayerId)
     {
-        Debug.Log("Sending join to server for player " + newPlayerId);
         Packet packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.PLAYER_JOINED_GAME);
         packet.buffer.PutInt(newPlayerId);

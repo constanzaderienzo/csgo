@@ -28,11 +28,6 @@ public class MyServer {
         this.clientsCubes = new Dictionary<int, GameObject>();
         this.clients = new Dictionary<int, ClientInfo>();
         this.newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
-        // clientsCubes.Add(1, new GameObject());
-        // string serverIP = "127.0.0.1";
-        // int port = 9002;
-        // var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-        // clients.Add(1, new ClientInfo(1, remoteEp));
     }
 
     public void UpdateServer() {
@@ -56,15 +51,12 @@ public class MyServer {
             switch(packetType)
             {
                 case (int) PacketType.INPUT:
-                    Debug.Log("Packet of type INPUT");
                     ServerReceivesClientInput(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
-                    Debug.Log("Packet of type PLAYER JOINED");
                     JoinPlayer(packet);
                     break;
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
-                    Debug.Log("Packet of type BROADCAST NEW PLAYER");
                     ClientReceivedNewPlayerBroadcast(packet);
                     break;
                 default:
@@ -93,11 +85,9 @@ public class MyServer {
         }
         if(clientId != -1 && client != null)
             SendACK(client.lastInputApplied, clients[clientId].ipEndPoint, (int) PacketType.ACK);
-
     }
 
     private void SendACK(int inputIndex, IPEndPoint clientEndpoint, int ackType) {
-        Debug.Log("Sending " + ackType + "ack to " + clientEndpoint.Port);
         var packet = Packet.Obtain();
         packet.buffer.PutInt(ackType);
         packet.buffer.PutInt(inputIndex);
@@ -127,7 +117,6 @@ public class MyServer {
         WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
         foreach (var clientId in clients.Keys)
         {
-            Debug.Log("Sending snapshot to client " + clientId + "to port " + clients[clientId].ipEndPoint.Port);
             //serialize
             var packet = Packet.Obtain();
             packetNumber += 1;
@@ -136,6 +125,8 @@ public class MyServer {
             Snapshot currentSnapshot = new Snapshot(packetNumber, cubeEntity, currentWorldInfo);
             currentSnapshot.Serialize(packet.buffer);
             packet.buffer.Flush();
+            Debug.Log("Sending snapshot to client " + clientId + "in " + clients[clientId].ipEndPoint.Address + ":" + clients[clientId].ipEndPoint.Port);
+            Debug.Log("Packet " + packet.buffer.GetAvailableByteCount());
             channel.Send(packet, clients[clientId].ipEndPoint);
             packet.Free();
         }  

@@ -48,13 +48,13 @@ public class MyClient {
         SendClientInput();
         ResendIfExpired();
 
-        var packet = channel.GetPacket();
-        ProcessPacket(packet);
+        ProcessPacket();
 
     }
     
-    private void ProcessPacket(Packet packet)
+    private void ProcessPacket()
     {
+        var packet = channel.GetPacket();
         while (packet != null)
         {
             int packetType = packet.buffer.GetInt();
@@ -65,13 +65,11 @@ public class MyClient {
                     GetSnapshot(packet);
                     break;
                 case (int) PacketType.ACK:
-                    Debug.Log("Packet of type ACK");
                     GetServerACK(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
                 break;
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
-                    Debug.Log("Packet of type BROADCAST NEW PLAYER");
                     NewPlayerBroadcastEvent newPlayer = NewPlayerBroadcastEvent.Deserialize(packet.buffer);
                     AddClient(newPlayer.playerId, newPlayer.newPlayer);
                     break;
@@ -85,7 +83,6 @@ public class MyClient {
     
     private void GetSnapshot(Packet packet)
     {
-        Debug.Log("Getting snapshot");
         CubeEntity cubeEntity = new CubeEntity(players[id]);
         Snapshot snapshot = new Snapshot(cubeEntity);
         snapshot.Deserialize(packet.buffer);
@@ -203,7 +200,6 @@ public class MyClient {
     }
     
     private void GetServerACK(Packet packet) {
-        // Capaz tiene que ser un while
         while (packet != null) {
             int inputIndex = packet.buffer.GetInt();
             if(lastRemoved < inputIndex) 
@@ -220,7 +216,7 @@ public class MyClient {
         var previousTime = (interpolationBuffer[0]).packetNumber * (1f/pps);
         var nextTime =  interpolationBuffer[1].packetNumber * (1f/pps);
         var t =  (clientTime - previousTime) / (nextTime - previousTime); 
-        var interpolatedSnapshot = Snapshot.CreateInterpolated(interpolationBuffer[0], interpolationBuffer[1], t);
+        var interpolatedSnapshot = Snapshot.CreateInterpolated(interpolationBuffer[0], interpolationBuffer[1], players, t);
         interpolatedSnapshot.Apply();
 
         if(clientTime > nextTime) {
