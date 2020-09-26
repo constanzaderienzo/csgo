@@ -69,6 +69,7 @@
      <Compile Include="Assets\Scripts\Tests\CubeEntity.cs" />
      <Compile Include="Assets\Scripts\Tests\MyClient.cs" />
      <Compile Include="Assets\Scripts\Tests\MyServer.cs" />
+     <Compile Include="Assets\Scripts\Tests\NewPlayerBroadcastEvent.cs" />
      <Compile Include="Assets\Scripts\Tests\ReliablePacket.cs" />
      <Compile Include="Assets\Scripts\Tests\SimulationTest.cs" />
      <Compile Include="Assets\Scripts\Tests\Snapshot.cs" />

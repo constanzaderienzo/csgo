@@ -13,12 +13,13 @@ public class MyServer {
     }
     private GameObject serverPrefab;
     private Channel channel;
-    private int ackPort;
     private float accum = 0f;
+    private float serverTime = 0f;
     private int packetNumber = 0;
     private int pps;
     private Dictionary<int, GameObject> clientsCubes;
     private Dictionary<int, ClientInfo> clients;
+    private List<NewPlayerBroadcastEvent> newPlayerBroadcastEvents;
 
     public MyServer(GameObject serverPrefab, Channel channel, int pps) {
         this.serverPrefab = serverPrefab;
@@ -26,6 +27,7 @@ public class MyServer {
         this.pps = pps;
         this.clientsCubes = new Dictionary<int, GameObject>();
         this.clients = new Dictionary<int, ClientInfo>();
+        this.newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
         // clientsCubes.Add(1, new GameObject());
         // string serverIP = "127.0.0.1";
         // int port = 9002;
@@ -35,6 +37,7 @@ public class MyServer {
 
     public void UpdateServer() {
         accum += Time.deltaTime;    
+        serverTime += Time.deltaTime;
         var packet = channel.GetPacket();
         ProcessPacket(packet);
         float sendRate = (1f/pps);
@@ -82,16 +85,16 @@ public class MyServer {
             }
         }
         if(clientId != -1 && client != null)
-            SendACK(client.lastInputApplied, clientId, (int) PacketType.ACK);
+            SendACK(client.lastInputApplied, clients[clientId].ipEndPoint, (int) PacketType.ACK);
 
     }
 
-    private void SendACK(int inputIndex, int clientId, int ackType) {
+    private void SendACK(int inputIndex, IPEndPoint clientEndpoint, int ackType) {
         var packet = Packet.Obtain();
         packet.buffer.PutInt(ackType);
         packet.buffer.PutInt(inputIndex);
         packet.buffer.Flush();
-        channel.Send(packet, clients[clientId].ipEndPoint);
+        channel.Send(packet, clientEndpoint);
         packet.Free();
     }
 
@@ -147,7 +150,7 @@ public class MyServer {
         var last = clients.Keys.Count + 1;
         ClientInfo clientInfo = new ClientInfo(clientId, endPoint);
         clients.Add(last, clientInfo);
-        //TODO Send ACK 
+        SendACK(last, endPoint, (int)PacketType.PLAYER_JOINED_GAME);
         AddPlayerToWorld(clientId);
     }
 
@@ -161,6 +164,24 @@ public class MyServer {
         GameObject newCube = GameObject.Instantiate(serverPrefab, position, rotation);
         clientsCubes[clientId] = newCube;
         //Send Broadcast
+        BroadcastNewPlayer(clientId, position, rotation.eulerAngles);
+    }
+
+    private void BroadcastNewPlayer(int newPlayerId, Vector3 position, Vector3 rotation)
+    {
+        CubeEntity newPlayer = new CubeEntity(clientsCubes[newPlayerId], position, rotation);
+        foreach (var id in clients.Keys)
+        {
+            Debug.Log("Sending event to playerId = " + id);
+            IPEndPoint clientEndpoint = clients[id].ipEndPoint;
+            var packet = Packet.Obtain();
+            packet.buffer.PutInt((int) PacketType.NEW_PLAYER_BROADCAST);
+            NewPlayerBroadcastEvent newPlayerEvent = new NewPlayerBroadcastEvent(newPlayerId, newPlayer, serverTime, id);
+            newPlayerEvent.Serialize(packet.buffer);
+            packet.buffer.Flush();
+            channel.Send(packet, clientEndpoint);
+            newPlayerBroadcastEvents.Add(newPlayerEvent);
+        }
     }
     
     private void ClientReceivedNewPlayerBroadcast(Packet packet)

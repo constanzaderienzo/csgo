@@ -36,7 +36,7 @@ public class WorldInfo
         for (int i = 0; i < quantity; i++)
         {
             int playerId = buffer.GetInt();
-            CubeEntity player = CubeEntity.Deserialize(buffer);
+            CubeEntity player = CubeEntity.DeserializeInfo(buffer);
             currentPlayers[playerId] = player;
         }
         return new WorldInfo(currentPlayers);

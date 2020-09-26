@@ -11,6 +11,12 @@ public class CubeEntity
     public CubeEntity(GameObject cubeGameObject) {
         this.cubeGameObject = cubeGameObject;
     }
+    public CubeEntity(GameObject cubeGameObject, Vector3 position, Vector3 eulerAngles)
+    {
+        this.cubeGameObject = cubeGameObject;
+        this.position = position;
+        this.eulerAngles = eulerAngles;
+    }
 
     public void Serialize(BitBuffer buffer) {
         var transform = cubeGameObject.transform;
@@ -23,7 +29,7 @@ public class CubeEntity
         buffer.PutFloat(transform.eulerAngles.z);
     }
 
-    public static CubeEntity Deserialize(BitBuffer buffer) {
+    public static CubeEntity DeserializeInfo(BitBuffer buffer) {
         CubeEntity newCube = new CubeEntity(null);
         newCube.position = new Vector3();
         newCube.eulerAngles = new Vector3();
@@ -34,6 +40,17 @@ public class CubeEntity
         newCube.eulerAngles.y = buffer.GetFloat();
         newCube.eulerAngles.z = buffer.GetFloat();
         return newCube;
+    }
+
+    public void Deserialize(BitBuffer buffer) {
+        position = new Vector3();
+        eulerAngles = new Vector3();
+        position.x = buffer.GetFloat();
+        position.y = buffer.GetFloat();
+        position.z = buffer.GetFloat();
+        eulerAngles.x = buffer.GetFloat();
+        eulerAngles.y = buffer.GetFloat();
+        eulerAngles.z = buffer.GetFloat();
     }
 
     public static CubeEntity CreateInterpolated(CubeEntity previous, CubeEntity next, float t) {

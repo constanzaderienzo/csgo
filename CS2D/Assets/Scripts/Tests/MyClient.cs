@@ -15,7 +15,7 @@ public class MyClient {
     }
     private GameObject playerPrefab;
     private Channel channel;
-
+    private IPEndPoint serverEndpoint;
     List<Snapshot> interpolationBuffer = new List<Snapshot>();
     public int requiredSnapshots = 3;
     private bool clientPlaying = false;
@@ -30,9 +30,10 @@ public class MyClient {
     private int lastRemoved;
 
 
-    public MyClient(GameObject playerPrefab, Channel channel, int pps, int id) {
+    public MyClient(GameObject playerPrefab, Channel channel, IPEndPoint serverEndpoint ,int pps, int id) {
         this.playerPrefab = playerPrefab;
         this.channel = channel;
+        this.serverEndpoint = serverEndpoint;
         this.pps = pps;
         this.players = new Dictionary<int, GameObject>();
         this.id = id;
@@ -118,27 +119,18 @@ public class MyClient {
     private void SendReliablePacket(Packet packet, float timeout)
     {
         packetsToSend.Add(new ReliablePacket(packet, clientActions.Count, timeout, packetsTime));
-        string serverIP = "127.0.0.1";
-        int port = 9001;
-        var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-        channel.Send(packet, remoteEp);
+        channel.Send(packet, serverEndpoint);
     }
     
     private void Resend(int index) 
     {
-        string serverIP = "127.0.0.1";
-        int port = 9001;
-        var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-        channel.Send(packetsToSend[index].packet, remoteEp);
+        channel.Send(packetsToSend[index].packet, serverEndpoint);
         packetsToSend[index].sentTime = clientTime;
     }
     
     private void SendUnreliablePacket(Packet packet)
     {
-        string serverIP = "127.0.0.1";
-        int port = 9001;
-        var remoteEp = new IPEndPoint(IPAddress.Parse(serverIP), port);
-        channel.Send(packet, remoteEp);
+        channel.Send(packet, serverEndpoint);
         packet.Free();
     }
     
@@ -238,5 +230,10 @@ public class MyClient {
         Quaternion rotation = Quaternion.Euler(playerCube.eulerAngles);
         GameObject player = GameObject.Instantiate(playerPrefab, position, rotation) as GameObject;
         players[playerId] = player;
+    }
+
+    public Channel GetChannel()
+    {
+        return channel;
     }
 }
