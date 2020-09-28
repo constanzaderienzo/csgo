@@ -19,7 +19,7 @@ public class SimulationTest : MonoBehaviour
     private MyServer myServer;
 
     private bool connected = true;
-    public int pps = 10;
+    public int pps = 60;
     private float time;
     private int channelPort;
     private IPEndPoint serverEndpoint;
@@ -55,7 +55,7 @@ public class SimulationTest : MonoBehaviour
             int newPlayerId = CreateNewPlayer();
             SendJoinToServer(newPlayerId);
         }
-        CheckForPlayerJoinedACK();
+        CheckForPlayerJoinedAck();
         ResendPlayerJoinedIfExpired();
 
         foreach (MyClient client in clients.Values)
@@ -64,7 +64,7 @@ public class SimulationTest : MonoBehaviour
         }
         myServer.UpdateServer();        
     }
-    private void CheckForPlayerJoinedACK()
+    private void CheckForPlayerJoinedAck()
     {
         List<int> toRemove = new List<int>();
         for (int i = 0; i < sentPlayerJoinEvents.Count; i++)
@@ -86,7 +86,6 @@ public class SimulationTest : MonoBehaviour
     }
     private bool ReceivedPlayerAck(MyClient client)
     {
-        Channel channel = client.GetChannel();
         var packet = client.GetChannel().GetPacket();
         while (packet != null)
         {
@@ -94,7 +93,6 @@ public class SimulationTest : MonoBehaviour
             if(packetType == (int) PacketType.PLAYER_JOINED_GAME)
             {
                 int clientId = packet.buffer.GetInt();
-                Debug.Log("Received player ack " + clientId);
                 if(clientId == 1)
                 {
                     client.id = clientId;
@@ -102,6 +100,7 @@ public class SimulationTest : MonoBehaviour
                 }
                 return true;
             }
+            packet = client.GetChannel().GetPacket();
         }
         return false;
     }
@@ -109,6 +108,7 @@ public class SimulationTest : MonoBehaviour
     {
         Packet packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.PLAYER_JOINED_GAME);
+        // In this case packet index is playerId
         packet.buffer.PutInt(newPlayerId);
         packet.buffer.Flush();
         sentPlayerJoinEvents.Add(new ReliablePacket(packet, newPlayerId, 1f, time));
@@ -126,9 +126,10 @@ public class SimulationTest : MonoBehaviour
             }
         }
     }
-    private void Resend(int index) 
+    private void Resend(int index)
     {
-        channel.Send(sentPlayerJoinEvents[index].packet, serverEndpoint);
+        int clientId = sentPlayerJoinEvents[index].packetIndex;
+        clients[clientId].GetChannel().Send(sentPlayerJoinEvents[index].packet, serverEndpoint);
         sentPlayerJoinEvents[index].sentTime = time;
     }
     private int CreateNewPlayer()

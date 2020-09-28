@@ -63,6 +63,7 @@ public class MyServer {
                     Debug.Log("Unrecognized type in server");
                     break;
             }
+            packet.Free();
             packet = channel.GetPacket();
         }
     }
@@ -73,6 +74,7 @@ public class MyServer {
         ClientInfo client = null;
         for (int i = 0; i < actionsCount; i++) {
             Actions action = new Actions();
+            Debug.Log(packet.buffer.GetAvailableByteCount());
             action.DeserializeInput(packet.buffer);
             clientId = action.id;
             client = clients[clientId];
@@ -92,6 +94,8 @@ public class MyServer {
         packet.buffer.PutInt(ackType);
         packet.buffer.PutInt(inputIndex);
         packet.buffer.Flush();
+        if(ackType == (int) MyClient.PacketType.ACK)
+            Debug.Log("Sending ACK in server");
         channel.Send(packet, clientEndpoint);
         packet.Free();
     }
@@ -125,8 +129,8 @@ public class MyServer {
             Snapshot currentSnapshot = new Snapshot(packetNumber, cubeEntity, currentWorldInfo);
             currentSnapshot.Serialize(packet.buffer);
             packet.buffer.Flush();
-            Debug.Log("Sending snapshot to client " + clientId + "in " + clients[clientId].ipEndPoint.Address + ":" + clients[clientId].ipEndPoint.Port);
-            Debug.Log("Packet " + packet.buffer.GetAvailableByteCount());
+            //Debug.Log("Sending snapshot to client " + clientId + "in " + clients[clientId].ipEndPoint.Address + ":" + clients[clientId].ipEndPoint.Port);
+            //Debug.Log("Packet " + packet.buffer.GetAvailableByteCount());
             channel.Send(packet, clients[clientId].ipEndPoint);
             packet.Free();
         }  
@@ -148,7 +152,7 @@ public class MyServer {
     {
         int clientId = packet.buffer.GetInt();
         IPEndPoint endPoint = packet.fromEndPoint;
-        Debug.Log("Client with id " + clientId + " and endpoint " + endPoint.Address + endPoint.Port + " was added");
+        //Debug.Log("Client with id " + clientId + " and endpoint " + endPoint.Address + endPoint.Port + " was added");
         var last = clients.Keys.Count + 1;
         ClientInfo clientInfo = new ClientInfo(clientId, endPoint);
         clients.Add(last, clientInfo);
@@ -174,13 +178,13 @@ public class MyServer {
         CubeEntity newPlayer = new CubeEntity(clientsCubes[newPlayerId], position, rotation);
         foreach (var id in clients.Keys)
         {
-            Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);
             IPEndPoint clientEndpoint = clients[id].ipEndPoint;
             var packet = Packet.Obtain();
             packet.buffer.PutInt((int) PacketType.NEW_PLAYER_BROADCAST);
             NewPlayerBroadcastEvent newPlayerEvent = new NewPlayerBroadcastEvent(newPlayerId, newPlayer, serverTime, id);
             newPlayerEvent.Serialize(packet.buffer);
             packet.buffer.Flush();
+            //Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);
             channel.Send(packet, clientEndpoint);
             newPlayerBroadcastEvents.Add(newPlayerEvent);
         }
@@ -188,7 +192,20 @@ public class MyServer {
     
     private void ClientReceivedNewPlayerBroadcast(Packet packet)
     {
-        int clientId = packet.buffer.GetInt();
         int newPlayerId = packet.buffer.GetInt();
+        int clientId = packet.buffer.GetInt();
+        int toRemove = -1;
+        for (int i = 0; i < newPlayerBroadcastEvents.Count; i++)
+        {
+            if (newPlayerBroadcastEvents[i].playerId == newPlayerId &&
+                newPlayerBroadcastEvents[i].destinationId == clientId)
+            {
+                toRemove = i;
+                break;
+            }
+        }
+
+        if (toRemove != -1)
+            newPlayerBroadcastEvents.RemoveAt(toRemove);
     }
 }

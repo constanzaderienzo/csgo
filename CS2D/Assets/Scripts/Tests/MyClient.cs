@@ -37,6 +37,7 @@ public class MyClient {
         this.pps = pps;
         this.players = new Dictionary<int, GameObject>();
         this.id = id;
+        this.inputIndex = 0;
         this.lastRemoved = 0;
         this.clientActions = new List<Actions>();
     }
@@ -61,22 +62,22 @@ public class MyClient {
             switch(packetType)
             {
                 case (int) PacketType.SNAPSHOT:
-                    Debug.Log("Packet of type SNAPSHOT");
                     GetSnapshot(packet);
                     break;
                 case (int) PacketType.ACK:
-                    GetServerACK(packet);
+                    //GetServerACK(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
-                break;
+                    break;
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
                     NewPlayerBroadcastEvent newPlayer = NewPlayerBroadcastEvent.Deserialize(packet.buffer);
                     AddClient(newPlayer.playerId, newPlayer.newPlayer);
                     break;
                 default:
-                    Debug.Log("Unrecognized type in client");
+                    Debug.Log("Unrecognized type in client" + packetType);
                     break;
             }
+            packet.Free();
             packet = channel.GetPacket();
         }
     }
@@ -110,22 +111,33 @@ public class MyClient {
             {
                 if (id == playerId)
                 {
-                    Debug.Log("Spawning own with id = " + playerId);
                     Spawn(cubeEntity);
                 }
                 else 
                 {
-                    Debug.Log("Spawning player with id = " + playerId);
                     SpawnPlayer(playerId, cubeEntity);
                 }
             }
         }
         //Send ACK
+        SendNewPlayerAck(playerId, (int) PacketType.NEW_PLAYER_BROADCAST);
     }
-    
-    private void SendReliablePacket(Packet packet, float timeout)
+
+    private void SendNewPlayerAck(int playerId, int newPlayerBroadcast)
     {
-        packetsToSend.Add(new ReliablePacket(packet, clientActions.Count, timeout, packetsTime));
+        var packet = Packet.Obtain();
+        packet.buffer.PutInt(newPlayerBroadcast);
+        packet.buffer.PutInt(playerId);
+        // Add my id so the server can easily know which client sent it
+        packet.buffer.PutInt(id);
+        packet.buffer.Flush();
+        channel.Send(packet, serverEndpoint);
+    }
+
+    private void SendReliablePacket(Packet packet, float timeout, int packetNumber)
+    {
+        packetsToSend.Add(new ReliablePacket(packet, packetNumber, timeout, packetsTime));
+        Debug.Log(packetsToSend.Count + ":" + clientActions.Count);
         channel.Send(packet, serverEndpoint);
     }
     
@@ -157,7 +169,7 @@ public class MyClient {
         
         var packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.INPUT);
-        packet.buffer.PutInt(clientActions.Count);
+        packet.buffer.PutInt(inputIndex);
 
         foreach (Actions currentAction in clientActions)
         {
@@ -165,7 +177,7 @@ public class MyClient {
         }
         packet.buffer.Flush();
 
-        SendReliablePacket(packet, 1f);
+        SendReliablePacket(packet, 1f, inputIndex);
     }
     
     private void ResendIfExpired()
@@ -181,34 +193,38 @@ public class MyClient {
     
     private void CheckIfReliablePacketReceived(int index)
     {
-        List<int> toRemove = new List<int>();
-        for (int i = 0; i < packetsToSend.Count; i++)
+        int toRemove = -1;
+        var sizeAtMoment = packetsToSend.Count;
+        Debug.Log("Size"+ packetsToSend.Count);
+        for (int i = 0; i < sizeAtMoment; i++)
         {
+            Debug.Log("in for " + packetsToSend[i].packetIndex);
             if(packetsToSend[i].packetIndex == index)
             {
-                toRemove.Add(i);
+                toRemove = i;
+                break;
             }
         }
-        if(toRemove.Count != 0)
+        if(toRemove != -1)
         {
-            foreach (int i in toRemove)
-            {
-                packetsToSend[i].packet.Free();
-                packetsToSend.RemoveAt(i);
-            }
+                packetsToSend[toRemove].packet.Free();
+                packetsToSend.RemoveAt(toRemove);
         }
     }
     
     private void GetServerACK(Packet packet) {
-        while (packet != null) {
-            int inputIndex = packet.buffer.GetInt();
-            if(lastRemoved < inputIndex) 
+        if (packet != null) {
+            int packetNumber = packet.buffer.GetInt();
+            int quantity = packetNumber - lastRemoved;
+            Debug.Log("Received packet number " + packetNumber);
+            lastRemoved = quantity > 0 ? lastRemoved + quantity : lastRemoved;
+            Debug.Log("Deleting " + quantity + " times");
+            while (quantity > 0) 
             {
-                clientActions.RemoveRange(0, inputIndex - lastRemoved -1);
-                lastRemoved = inputIndex;
+                clientActions.RemoveAt(0);
+                quantity--;
             }
-            CheckIfReliablePacketReceived(inputIndex);
-            packet = channel.GetPacket();
+            //CheckIfReliablePacketReceived(packetNumber);
         }
     }
     

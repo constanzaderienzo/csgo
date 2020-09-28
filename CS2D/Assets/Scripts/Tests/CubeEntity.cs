@@ -61,7 +61,6 @@ public class CubeEntity
     }
 
     public void Apply() {
-        Debug.Log(cubeGameObject); 
         cubeGameObject.GetComponent<Transform>().position = position;
         cubeGameObject.GetComponent<Transform>().eulerAngles = eulerAngles;
     }
