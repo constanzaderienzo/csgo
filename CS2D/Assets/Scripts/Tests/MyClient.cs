@@ -19,6 +19,7 @@ public class MyClient {
     List<Snapshot> interpolationBuffer = new List<Snapshot>();
     public int requiredSnapshots = 3;
     private bool clientPlaying = false;
+    private bool hasReceievedAck = false;
     private float clientTime = 0f;
     private float packetsTime = 0f;
     private int pps;
@@ -45,10 +46,13 @@ public class MyClient {
     public void UpdateClient() 
     {
         packetsTime += Time.deltaTime;
-            
-        SendClientInput();
-        ResendIfExpired();
-
+        
+        if (hasReceievedAck)
+        {
+            SendClientInput();
+            ResendIfExpired();            
+        }
+        
         ProcessPacket();
 
     }
@@ -62,12 +66,17 @@ public class MyClient {
             switch(packetType)
             {
                 case (int) PacketType.SNAPSHOT:
-                    GetSnapshot(packet);
+                    if(hasReceievedAck)
+                        GetSnapshot(packet);
                     break;
                 case (int) PacketType.ACK:
                     GetServerACK(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
+                    Debug.Log("Received player joined");
+                    InitialSetUp(packet);
+                    if(id == 1)
+                        hasReceievedAck = true;
                     break;
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
                     NewPlayerBroadcastEvent newPlayer = NewPlayerBroadcastEvent.Deserialize(packet.buffer);
@@ -81,7 +90,25 @@ public class MyClient {
             packet = channel.GetPacket();
         }
     }
-    
+
+    private void InitialSetUp(Packet packet)
+    {
+        Debug.Log("Doing set up for player " + id);
+        // Discarding packet number (this is because im reusing the snapshot logic)
+        int discardPacketNumber = packet.buffer.GetInt(); 
+        Dictionary<int, GameObject> currentPlayers = WorldInfo.DeserializeSetUp(packet.buffer, playerPrefab, id);
+        foreach (var player in currentPlayers)
+        {
+            if (!players.ContainsKey(player.Key))
+            {
+                Debug.Log("Adding player with id " + player.Key);
+                players.Add(player.Key, player.Value);
+
+            }
+        }
+        Debug.Log("Players: " + players.Count + " for player " + id);
+    }
+
     private void GetSnapshot(Packet packet)
     {
         CubeEntity cubeEntity = new CubeEntity(players[id]);
@@ -105,22 +132,12 @@ public class MyClient {
     
     public void AddClient(int playerId, CubeEntity cubeEntity) 
     {
-        //Debug.Log("Player " + id + "received broadcast for player " + playerId);
+        Debug.Log("Player " + id + "received broadcast for player " + playerId);
         if (!players.ContainsKey(playerId))
         {
-            if (id == 1)
-            {
-                if (id == playerId)
-                {
-                    //Debug.Log("Spawning own");
-                    SpawnPlayer(id, cubeEntity);
-                }
-                else 
-                {
-                    //Debug.Log("Spawning player " + playerId);
-                    SpawnPlayer(playerId, cubeEntity);
-                }
-            }
+            SpawnPlayer(playerId, cubeEntity);
+            
+            //Debug.Log("Spawning player " + playerId);
         }
         //Send ACK
         SendNewPlayerAck(playerId, (int) PacketType.NEW_PLAYER_BROADCAST);
@@ -227,6 +244,7 @@ public class MyClient {
         var previousTime = (interpolationBuffer[0]).packetNumber * (1f/pps);
         var nextTime =  interpolationBuffer[1].packetNumber * (1f/pps);
         var t =  (clientTime - previousTime) / (nextTime - previousTime); 
+        Debug.Log("Before interpolating players " + players.Count);
         var interpolatedSnapshot = Snapshot.CreateInterpolated(interpolationBuffer[0], interpolationBuffer[1], players, t);
         interpolatedSnapshot.Apply();
 
@@ -241,6 +259,7 @@ public class MyClient {
         Quaternion rotation = Quaternion.Euler(playerCube.eulerAngles);
         GameObject player = GameObject.Instantiate(playerPrefab, position, rotation) as GameObject;
         players.Add(playerId, player);
+        Debug.Log("Added player " + players.Count);
     }
 
     public Channel GetChannel()

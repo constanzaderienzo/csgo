@@ -94,7 +94,7 @@ public class MyServer {
         packet.buffer.PutInt(inputIndex);
         packet.buffer.Flush();
         channel.Send(packet, clientEndpoint);
-        packet.Free();
+        //packet.Free();
     }
 
     private void ApplyClientInput(Actions action, Rigidbody rigidbody)
@@ -127,9 +127,8 @@ public class MyServer {
             currentSnapshot.Serialize(packet.buffer);
             packet.buffer.Flush();
             //Debug.Log("Sending snapshot to client " + clientId + "in " + clients[clientId].ipEndPoint.Address + ":" + clients[clientId].ipEndPoint.Port);
-            //Debug.Log("Packet " + packet.buffer.GetAvailableByteCount());
             channel.Send(packet, clients[clientId].ipEndPoint);
-            packet.Free();
+            //packet.Free();
         }  
     }
 
@@ -168,6 +167,22 @@ public class MyServer {
         clientsCubes[clientId] = newCube;
         //Send Broadcast
         BroadcastNewPlayer(clientId, position, rotation.eulerAngles);
+        //Send world info so the player can do initial set up
+        SendWorldStatusToNewPlayer(clientId);
+    }
+
+    private void SendWorldStatusToNewPlayer(int clientId)
+    {
+        WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
+        CubeEntity cubeEntity = new CubeEntity(clientsCubes[clientId]);
+        Snapshot currentSnapshot = new Snapshot(1, cubeEntity, currentWorldInfo);
+        var packet = Packet.Obtain();
+        packet.buffer.PutInt((int) PacketType.PLAYER_JOINED_GAME);
+        currentSnapshot.Serialize(packet.buffer);
+        packet.buffer.Flush();
+        channel.Send(packet, clients[clientId].ipEndPoint);
+        //packet.Free();
+        
     }
 
     private void BroadcastNewPlayer(int newPlayerId, Vector3 position, Vector3 rotation)

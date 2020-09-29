@@ -40,6 +40,8 @@ public class Snapshot
         {
             var previousCube = previous.worldInfo.players[playerId];
             var nextCube = next.worldInfo.players[playerId];
+            Debug.Log("Trying to access player id " + playerId);
+            Debug.Log("Players count " + gameObjects.Count);
             var cubeEntity = CubeEntity.CreateInterpolated(previousCube, nextCube, gameObjects[playerId] ,t);
             interpolatedCubeEntities.Add(playerId, cubeEntity);
         }
@@ -54,23 +56,5 @@ public class Snapshot
         {
             cubeEntity.Apply();
         }
-    }
-
-    public void SerializeInput(List<List<int>> clientActions, BitBuffer buffer) {
-        buffer.PutInt(clientActions[clientActions.Count - 1][0]);
-        buffer.PutInt(clientActions[clientActions.Count - 1][1]);
-        buffer.PutInt(clientActions[clientActions.Count - 1][2]);
-        buffer.PutInt(clientActions[clientActions.Count - 1][3]);
-        buffer.PutInt(clientActions[clientActions.Count - 1][4]);
-        buffer.PutInt(clientActions[clientActions.Count - 1][5]);
-    }
-
-    public void DeserializeInput(BitBuffer buffer) {
-        int index = buffer.GetInt();
-        bool jumps = buffer.GetInt() == 1 ? true : false;
-        bool movesLeft = buffer.GetInt() == 1 ? true : false;
-        bool movesRight = buffer.GetInt() == 1 ? true : false;
-        bool movesUp = buffer.GetInt() == 1 ? true : false;
-        bool movesDown = buffer.GetInt() == 1 ? true : false;
     }
 }

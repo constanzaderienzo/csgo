@@ -58,13 +58,10 @@ public class SimulationTest : MonoBehaviour
         CheckForPlayerJoinedAck();
         ResendPlayerJoinedIfExpired();
 
-        //foreach (MyClient client in clients.Values)
-        //{
-          //  client.UpdateClient();
-        //}
-        //TODO only for testing
-        if(clients.ContainsKey(1))
-            clients[1].UpdateClient();
+        foreach (MyClient client in clients.Values)
+        {
+            client.UpdateClient();
+        }
         myServer.UpdateServer();        
     }
     private void CheckForPlayerJoinedAck()
