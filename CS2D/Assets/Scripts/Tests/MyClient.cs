@@ -105,16 +105,19 @@ public class MyClient {
     
     public void AddClient(int playerId, CubeEntity cubeEntity) 
     {
+        //Debug.Log("Player " + id + "received broadcast for player " + playerId);
         if (!players.ContainsKey(playerId))
         {
             if (id == 1)
             {
                 if (id == playerId)
                 {
-                    Spawn(cubeEntity);
+                    //Debug.Log("Spawning own");
+                    SpawnPlayer(id, cubeEntity);
                 }
                 else 
                 {
+                    //Debug.Log("Spawning player " + playerId);
                     SpawnPlayer(playerId, cubeEntity);
                 }
             }
@@ -232,19 +235,12 @@ public class MyClient {
         }
     }
     
-    public void Spawn(CubeEntity clientCube)
-    {
-            Vector3 position = clientCube.position;
-            Quaternion rotation = Quaternion.Euler(clientCube.eulerAngles);
-            players[id] = Object.Instantiate(playerPrefab, position, rotation) as GameObject;
-    }  
-    
     public void SpawnPlayer(int playerId, CubeEntity playerCube)
     {
         Vector3 position = playerCube.position;
         Quaternion rotation = Quaternion.Euler(playerCube.eulerAngles);
         GameObject player = GameObject.Instantiate(playerPrefab, position, rotation) as GameObject;
-        players[playerId] = player;
+        players.Add(playerId, player);
     }
 
     public Channel GetChannel()

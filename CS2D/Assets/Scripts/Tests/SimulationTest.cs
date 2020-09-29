@@ -58,10 +58,13 @@ public class SimulationTest : MonoBehaviour
         CheckForPlayerJoinedAck();
         ResendPlayerJoinedIfExpired();
 
-        foreach (MyClient client in clients.Values)
-        {
-            client.UpdateClient();
-        }
+        //foreach (MyClient client in clients.Values)
+        //{
+          //  client.UpdateClient();
+        //}
+        //TODO only for testing
+        if(clients.ContainsKey(1))
+            clients[1].UpdateClient();
         myServer.UpdateServer();        
     }
     private void CheckForPlayerJoinedAck()
@@ -136,8 +139,9 @@ public class SimulationTest : MonoBehaviour
     {
         int clientId = clients.Count + 1;
         Channel clientChannel = new Channel(9000 + clientId);
+        Debug.Log("Creating new client with id " + clientId);
         MyClient client = new MyClient(clientPrefab, clientChannel, serverEndpoint, pps, clientId);
-        clients[clientId] = client;
+        clients.Add(clientId, client);
         return clientId;
     }
 }
