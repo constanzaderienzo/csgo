@@ -65,7 +65,7 @@ public class MyClient {
                     GetSnapshot(packet);
                     break;
                 case (int) PacketType.ACK:
-                    //GetServerACK(packet);
+                    GetServerACK(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
                     break;
@@ -134,10 +134,9 @@ public class MyClient {
         channel.Send(packet, serverEndpoint);
     }
 
-    private void SendReliablePacket(Packet packet, float timeout, int packetNumber)
+    private void SendReliablePacket(Packet packet, float timeout)
     {
-        packetsToSend.Add(new ReliablePacket(packet, packetNumber, timeout, packetsTime));
-        Debug.Log(packetsToSend.Count + ":" + clientActions.Count);
+        packetsToSend.Add(new ReliablePacket(packet, clientActions.Count, timeout, packetsTime));
         channel.Send(packet, serverEndpoint);
     }
     
@@ -161,23 +160,21 @@ public class MyClient {
             inputIndex, 
             Input.GetKeyDown(KeyCode.Space), 
             Input.GetKeyDown(KeyCode.LeftArrow), 
-            Input.GetKeyDown(KeyCode.RightArrow), 
-            Input.GetKeyDown(KeyCode.D)
+            Input.GetKeyDown(KeyCode.RightArrow)
         );
 
         clientActions.Add(action);
         
         var packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.INPUT);
-        packet.buffer.PutInt(inputIndex);
-
+        packet.buffer.PutInt(clientActions.Count);
         foreach (Actions currentAction in clientActions)
         {
             currentAction.SerializeInput(packet.buffer);
         }
         packet.buffer.Flush();
 
-        SendReliablePacket(packet, 1f, inputIndex);
+        SendReliablePacket(packet, 1f);
     }
     
     private void ResendIfExpired()
@@ -195,10 +192,8 @@ public class MyClient {
     {
         int toRemove = -1;
         var sizeAtMoment = packetsToSend.Count;
-        Debug.Log("Size"+ packetsToSend.Count);
         for (int i = 0; i < sizeAtMoment; i++)
         {
-            Debug.Log("in for " + packetsToSend[i].packetIndex);
             if(packetsToSend[i].packetIndex == index)
             {
                 toRemove = i;
@@ -207,25 +202,22 @@ public class MyClient {
         }
         if(toRemove != -1)
         {
-                packetsToSend[toRemove].packet.Free();
-                packetsToSend.RemoveAt(toRemove);
+            packetsToSend[toRemove].packet.Free();
+            packetsToSend.RemoveAt(toRemove);
         }
     }
     
     private void GetServerACK(Packet packet) {
-        if (packet != null) {
-            int packetNumber = packet.buffer.GetInt();
-            int quantity = packetNumber - lastRemoved;
-            Debug.Log("Received packet number " + packetNumber);
-            lastRemoved = quantity > 0 ? lastRemoved + quantity : lastRemoved;
-            Debug.Log("Deleting " + quantity + " times");
-            while (quantity > 0) 
-            {
-                clientActions.RemoveAt(0);
-                quantity--;
-            }
-            //CheckIfReliablePacketReceived(packetNumber);
+        int packetNumber = packet.buffer.GetInt();
+        int quantity = packetNumber - lastRemoved;
+        lastRemoved = packetNumber;
+        while (quantity > 0) 
+        {
+            clientActions.RemoveAt(0);
+            quantity--;
         }
+        CheckIfReliablePacketReceived(packetNumber);
+        
     }
     
     private void Interpolate() {

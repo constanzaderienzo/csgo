@@ -74,7 +74,6 @@ public class MyServer {
         ClientInfo client = null;
         for (int i = 0; i < actionsCount; i++) {
             Actions action = new Actions();
-            Debug.Log(packet.buffer.GetAvailableByteCount());
             action.DeserializeInput(packet.buffer);
             clientId = action.id;
             client = clients[clientId];
@@ -94,8 +93,6 @@ public class MyServer {
         packet.buffer.PutInt(ackType);
         packet.buffer.PutInt(inputIndex);
         packet.buffer.Flush();
-        if(ackType == (int) MyClient.PacketType.ACK)
-            Debug.Log("Sending ACK in server");
         channel.Send(packet, clientEndpoint);
         packet.Free();
     }
