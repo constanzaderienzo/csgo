@@ -25,9 +25,9 @@ public class MyServer {
         this.serverPrefab = serverPrefab;
         this.channel = channel;
         this.pps = pps;
-        this.clientsCubes = new Dictionary<int, GameObject>();
-        this.clients = new Dictionary<int, ClientInfo>();
-        this.newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
+        clientsCubes = new Dictionary<int, GameObject>();
+        clients = new Dictionary<int, ClientInfo>();
+        newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
     }
 
     public void UpdateServer() {
@@ -116,16 +116,20 @@ public class MyServer {
         WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
         foreach (var clientId in clients.Keys)
         {
-            //serialize
-            var packet = Packet.Obtain();
-            packetNumber += 1;
-            packet.buffer.PutInt((int) PacketType.SNAPSHOT);
-            CubeEntity cubeEntity = new CubeEntity(clientsCubes[clientId]);
-            Snapshot currentSnapshot = new Snapshot(packetNumber, cubeEntity, currentWorldInfo);
-            currentSnapshot.Serialize(packet.buffer);
-            packet.buffer.Flush();
-            //Debug.Log("Sending snapshot to client " + clientId);
-            channel.Send(packet, clients[clientId].ipEndPoint);
+            //TODO remove in prod
+            if (clientId == 1)
+            {
+                //serialize
+                var packet = Packet.Obtain();
+                packetNumber += 1;
+                packet.buffer.PutInt((int) PacketType.SNAPSHOT);
+                CubeEntity cubeEntity = new CubeEntity(clientsCubes[clientId]);
+                Snapshot currentSnapshot = new Snapshot(packetNumber, cubeEntity, currentWorldInfo);
+                currentSnapshot.Serialize(packet.buffer);
+                packet.buffer.Flush();
+                //Debug.Log("Sending snapshot to client " + clientId);
+                channel.Send(packet, clients[clientId].ipEndPoint);
+            }
         }  
     }
 
