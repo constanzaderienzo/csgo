@@ -94,7 +94,6 @@ public class MyServer {
         packet.buffer.PutInt(inputIndex);
         packet.buffer.Flush();
         channel.Send(packet, clientEndpoint);
-        //packet.Free();
     }
 
     private void ApplyClientInput(Actions action, Rigidbody rigidbody)

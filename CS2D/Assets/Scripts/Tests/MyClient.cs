@@ -13,9 +13,9 @@ public class MyClient {
         PLAYER_JOINED_GAME   = 3,
         NEW_PLAYER_BROADCAST  = 4
     }
-    private GameObject playerPrefab;
-    private Channel channel;
-    private IPEndPoint serverEndpoint;
+    private readonly GameObject playerPrefab;
+    private readonly Channel channel;
+    private readonly IPEndPoint serverEndpoint;
     List<Snapshot> interpolationBuffer = new List<Snapshot>();
     public int requiredSnapshots = 3;
     private bool clientPlaying = false;
@@ -45,10 +45,10 @@ public class MyClient {
     
     public void UpdateClient() 
     {
-        packetsTime += Time.deltaTime;
         
         if (hasReceievedAck)
         {
+            packetsTime += Time.deltaTime;
             SendClientInput();
             ResendIfExpired();            
         }
@@ -70,13 +70,16 @@ public class MyClient {
                         GetSnapshot(packet);
                     break;
                 case (int) PacketType.ACK:
-                    GetServerACK(packet);
+                    if(hasReceievedAck)
+                        GetServerACK(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
-                    Debug.Log("Received player joined");
-                    InitialSetUp(packet);
-                    if(id == 1)
+                    //TODO remove in prod
+                    if (id == 1)
+                    {
+                        InitialSetUp(packet);
                         hasReceievedAck = true;
+                    }
                     break;
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
                     NewPlayerBroadcastEvent newPlayer = NewPlayerBroadcastEvent.Deserialize(packet.buffer);
@@ -95,18 +98,17 @@ public class MyClient {
     {
         Debug.Log("Doing set up for player " + id);
         // Discarding packet number (this is because im reusing the snapshot logic)
-        int discardPacketNumber = packet.buffer.GetInt(); 
-        Dictionary<int, GameObject> currentPlayers = WorldInfo.DeserializeSetUp(packet.buffer, playerPrefab, id);
+        packet.buffer.GetInt(); 
+        Dictionary<int, GameObject> currentPlayers = WorldInfo.DeserializeSetUp(packet.buffer, playerPrefab, id, players);
         foreach (var player in currentPlayers)
         {
             if (!players.ContainsKey(player.Key))
             {
-                Debug.Log("Adding player with id " + player.Key);
+                //Debug.Log("Adding player with id " + player.Key);
                 players.Add(player.Key, player.Value);
 
             }
         }
-        Debug.Log("Players: " + players.Count + " for player " + id);
     }
 
     private void GetSnapshot(Packet packet)
@@ -132,12 +134,12 @@ public class MyClient {
     
     public void AddClient(int playerId, CubeEntity cubeEntity) 
     {
-        Debug.Log("Player " + id + "received broadcast for player " + playerId);
+        //Debug.Log("Player " + id + "received broadcast for player " + playerId);
         if (!players.ContainsKey(playerId))
         {
-            SpawnPlayer(playerId, cubeEntity);
-            
-            //Debug.Log("Spawning player " + playerId);
+            //TODO remove in prod
+            if(id == 1)
+                SpawnPlayer(playerId, cubeEntity);
         }
         //Send ACK
         SendNewPlayerAck(playerId, (int) PacketType.NEW_PLAYER_BROADCAST);
@@ -156,13 +158,14 @@ public class MyClient {
 
     private void SendReliablePacket(Packet packet, float timeout)
     {
-        packetsToSend.Add(new ReliablePacket(packet, clientActions.Count, timeout, packetsTime));
+        packetsToSend.Add(new ReliablePacket(packet, inputIndex, timeout, packetsTime));
         channel.Send(packet, serverEndpoint);
     }
     
     private void Resend(int index) 
     {
         channel.Send(packetsToSend[index].packet, serverEndpoint);
+        //TODO check if should be packets time
         packetsToSend[index].sentTime = clientTime;
     }
     
@@ -194,7 +197,7 @@ public class MyClient {
         }
         packet.buffer.Flush();
 
-        SendReliablePacket(packet, 1f);
+        SendReliablePacket(packet, 2f);
     }
     
     private void ResendIfExpired()
@@ -203,6 +206,7 @@ public class MyClient {
         {
             if(packetsToSend[i].CheckIfExpired(packetsTime))
             {
+                Debug.Log("Resending packet " + packetsToSend[i].packetIndex + "...");
                 Resend(i);
             }
         }
@@ -222,7 +226,6 @@ public class MyClient {
         }
         if(toRemove != -1)
         {
-            packetsToSend[toRemove].packet.Free();
             packetsToSend.RemoveAt(toRemove);
         }
     }
@@ -244,7 +247,6 @@ public class MyClient {
         var previousTime = (interpolationBuffer[0]).packetNumber * (1f/pps);
         var nextTime =  interpolationBuffer[1].packetNumber * (1f/pps);
         var t =  (clientTime - previousTime) / (nextTime - previousTime); 
-        Debug.Log("Before interpolating players " + players.Count);
         var interpolatedSnapshot = Snapshot.CreateInterpolated(interpolationBuffer[0], interpolationBuffer[1], players, t);
         interpolatedSnapshot.Apply();
 
@@ -259,7 +261,6 @@ public class MyClient {
         Quaternion rotation = Quaternion.Euler(playerCube.eulerAngles);
         GameObject player = GameObject.Instantiate(playerPrefab, position, rotation) as GameObject;
         players.Add(playerId, player);
-        Debug.Log("Added player " + players.Count);
     }
 
     public Channel GetChannel()

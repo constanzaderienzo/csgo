@@ -40,8 +40,6 @@ public class Snapshot
         {
             var previousCube = previous.worldInfo.players[playerId];
             var nextCube = next.worldInfo.players[playerId];
-            Debug.Log("Trying to access player id " + playerId);
-            Debug.Log("Players count " + gameObjects.Count);
             var cubeEntity = CubeEntity.CreateInterpolated(previousCube, nextCube, gameObjects[playerId] ,t);
             interpolatedCubeEntities.Add(playerId, cubeEntity);
         }
