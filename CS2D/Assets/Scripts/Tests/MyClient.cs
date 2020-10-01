@@ -70,8 +70,7 @@ public class MyClient {
                         GetSnapshot(packet);
                     break;
                 case (int) PacketType.ACK:
-                    if(hasReceievedAck)
-                        GetServerACK(packet);
+                    GetServerACK(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
                     //TODO remove in prod
@@ -247,8 +246,7 @@ public class MyClient {
         var previousTime = (interpolationBuffer[0]).packetNumber * (1f/pps);
         var nextTime =  interpolationBuffer[1].packetNumber * (1f/pps);
         var t =  (clientTime - previousTime) / (nextTime - previousTime); 
-        var interpolatedSnapshot = Snapshot.CreateInterpolated(interpolationBuffer[0], interpolationBuffer[1], players, t);
-        interpolatedSnapshot.Apply();
+        Snapshot.CreateInterpolatedAndApply(interpolationBuffer[0], interpolationBuffer[1], players, t);
 
         if(clientTime > nextTime) {
             interpolationBuffer.RemoveAt(0);

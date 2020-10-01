@@ -37,7 +37,6 @@ public class MyServer {
         float sendRate = (1f/pps);
         if (accum >= sendRate) {
             SendSnapshot();
-            // Restart accum
             accum -= sendRate;
         }
     }
@@ -125,9 +124,8 @@ public class MyServer {
             Snapshot currentSnapshot = new Snapshot(packetNumber, cubeEntity, currentWorldInfo);
             currentSnapshot.Serialize(packet.buffer);
             packet.buffer.Flush();
-            //Debug.Log("Sending snapshot to client " + clientId + "in " + clients[clientId].ipEndPoint.Address + ":" + clients[clientId].ipEndPoint.Port);
+            //Debug.Log("Sending snapshot to client " + clientId);
             channel.Send(packet, clients[clientId].ipEndPoint);
-            //packet.Free();
         }  
     }
 

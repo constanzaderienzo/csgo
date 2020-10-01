@@ -53,11 +53,11 @@ public class CubeEntity
         eulerAngles.z = buffer.GetFloat();
     }
 
-    public static CubeEntity CreateInterpolated(CubeEntity previous, CubeEntity next, GameObject gameObject, float t) {
+    public static void CreateInterpolatedAndApply(CubeEntity previous, CubeEntity next, GameObject gameObject, float t) {
         var cubeEntity = new CubeEntity(gameObject);
         cubeEntity.position += Vector3.Lerp(previous.position, next.position, t);
         cubeEntity.eulerAngles += Vector3.Lerp(previous.eulerAngles, next.eulerAngles, t);
-        return cubeEntity;
+        cubeEntity.Apply();
     }
 
     public void Apply() {

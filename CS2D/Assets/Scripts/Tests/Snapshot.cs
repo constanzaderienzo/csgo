@@ -33,20 +33,14 @@ public class Snapshot
         worldInfo = WorldInfo.Deserialize(buffer);
     }
 
-    public static Snapshot CreateInterpolated(Snapshot previous, Snapshot next, Dictionary<int, GameObject> gameObjects, float t) {
-        Dictionary<int, CubeEntity> interpolatedCubeEntities = new Dictionary<int, CubeEntity>();
+    public static void CreateInterpolatedAndApply(Snapshot previous, Snapshot next, Dictionary<int, GameObject> gameObjects, float t) {
 
         foreach (var playerId in previous.worldInfo.players.Keys)
         {
             var previousCube = previous.worldInfo.players[playerId];
             var nextCube = next.worldInfo.players[playerId];
-            var cubeEntity = CubeEntity.CreateInterpolated(previousCube, nextCube, gameObjects[playerId] ,t);
-            interpolatedCubeEntities.Add(playerId, cubeEntity);
+            CubeEntity.CreateInterpolatedAndApply(previousCube, nextCube, gameObjects[playerId] ,t);
         }
-        
-        WorldInfo interpolatedWorldInfo = new WorldInfo(interpolatedCubeEntities);
-        var snapshot = new Snapshot(-1, interpolatedWorldInfo);
-        return snapshot;
     }
 
     public void Apply() {
