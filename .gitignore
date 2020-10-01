@@ -1,5 +1,3 @@
-\Library\
-/Library/*
 /[Ll]ibrary/
 /[Tt]emp/
 /[Oo]bj/
@@ -35,6 +33,6 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
-CS2D/Library
-CS2D/Temp
-CS2D/obj
+../CS2D/Library
+../CS2D/Temp
+../CS2D/obj

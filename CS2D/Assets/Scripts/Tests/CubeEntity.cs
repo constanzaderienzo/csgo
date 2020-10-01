@@ -11,6 +11,12 @@ public class CubeEntity
     public CubeEntity(GameObject cubeGameObject) {
         this.cubeGameObject = cubeGameObject;
     }
+    public CubeEntity(GameObject cubeGameObject, Vector3 position, Vector3 eulerAngles)
+    {
+        this.cubeGameObject = cubeGameObject;
+        this.position = position;
+        this.eulerAngles = eulerAngles;
+    }
 
     public void Serialize(BitBuffer buffer) {
         var transform = cubeGameObject.transform;
@@ -21,6 +27,19 @@ public class CubeEntity
         buffer.PutFloat(transform.eulerAngles.x);
         buffer.PutFloat(transform.eulerAngles.y);
         buffer.PutFloat(transform.eulerAngles.z);
+    }
+
+    public static CubeEntity DeserializeInfo(BitBuffer buffer) {
+        CubeEntity newCube = new CubeEntity(null);
+        newCube.position = new Vector3();
+        newCube.eulerAngles = new Vector3();
+        newCube.position.x = buffer.GetFloat();
+        newCube.position.y = buffer.GetFloat();
+        newCube.position.z = buffer.GetFloat();
+        newCube.eulerAngles.x = buffer.GetFloat();
+        newCube.eulerAngles.y = buffer.GetFloat();
+        newCube.eulerAngles.z = buffer.GetFloat();
+        return newCube;
     }
 
     public void Deserialize(BitBuffer buffer) {
@@ -34,11 +53,11 @@ public class CubeEntity
         eulerAngles.z = buffer.GetFloat();
     }
 
-    public static CubeEntity CreateInterpolated(CubeEntity previous, CubeEntity next, float t) {
-        var cubeEntity = new CubeEntity(previous.cubeGameObject);
+    public static void CreateInterpolatedAndApply(CubeEntity previous, CubeEntity next, GameObject gameObject, float t) {
+        var cubeEntity = new CubeEntity(gameObject);
         cubeEntity.position += Vector3.Lerp(previous.position, next.position, t);
         cubeEntity.eulerAngles += Vector3.Lerp(previous.eulerAngles, next.eulerAngles, t);
-        return cubeEntity;
+        cubeEntity.Apply();
     }
 
     public void Apply() {
@@ -46,19 +65,5 @@ public class CubeEntity
         cubeGameObject.GetComponent<Transform>().eulerAngles = eulerAngles;
     }
 
-    public void ApplyClientInput(Actions action) {
-        // 0 = jumps
-        // 1 = left
-        // 2 = right
-        if (action.jump) {
-            cubeGameObject.GetComponent<Rigidbody>().AddForceAtPosition(Vector3.up * 5, Vector3.zero, ForceMode.Impulse);
-        }
-        if (action.left) {
-            cubeGameObject.GetComponent<Rigidbody>().AddForceAtPosition(Vector3.left * 5, Vector3.zero, ForceMode.Impulse);
-        }
-        if (action.right) {
-            cubeGameObject.GetComponent<Rigidbody>().AddForceAtPosition(Vector3.right * 5, Vector3.zero, ForceMode.Impulse);
-        }
 
-    }
 }
