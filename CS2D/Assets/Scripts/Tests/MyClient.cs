@@ -14,21 +14,26 @@ public class MyClient {
         NEW_PLAYER_BROADCAST  = 4
     }
     private readonly GameObject playerPrefab;
+    private readonly GameObject conciliateGameObject;
     private readonly Channel channel;
     private readonly IPEndPoint serverEndpoint;
-    List<Snapshot> interpolationBuffer = new List<Snapshot>();
-    public int requiredSnapshots = 3;
+    private readonly List<Snapshot> interpolationBuffer = new List<Snapshot>();
+    private readonly int requiredSnapshots = 3;
     private bool clientPlaying = false;
     private bool hasReceievedAck = false;
     private float clientTime = 0f;
     private float packetsTime = 0f;
-    private int pps;
-    private List<Actions> clientActions;
-    private List<ReliablePacket> packetsToSend = new List<ReliablePacket>();
-    [SerializeField] int inputIndex;    
-    private Dictionary<int, GameObject> players;
+    private readonly int pps;
+    private readonly List<Actions> clientActions;
+    private readonly Dictionary<int, Actions> appliedActions;
+    private readonly List<ReliablePacket> packetsToSend = new List<ReliablePacket>();
+    private int inputIndex;    
+    private readonly Dictionary<int, GameObject> players;
     public int id;
     private int lastRemoved;
+    private readonly float speed = 3.0f;
+    private readonly float rotateSpeed = 3.0f;
+    private Vector3 epsilon;
 
 
     public MyClient(GameObject playerPrefab, Channel channel, IPEndPoint serverEndpoint, int pps, int id) {
@@ -36,11 +41,12 @@ public class MyClient {
         this.channel = channel;
         this.serverEndpoint = serverEndpoint;
         this.pps = pps;
-        this.players = new Dictionary<int, GameObject>();
         this.id = id;
-        this.inputIndex = 0;
-        this.lastRemoved = 0;
-        this.clientActions = new List<Actions>();
+        epsilon = new Vector3(0.1f,0.1f,0.1f);
+        players = new Dictionary<int, GameObject>();
+        inputIndex = 0;
+        lastRemoved = 0;
+        clientActions = new List<Actions>();
     }
     
     public void UpdateClient() 
@@ -70,7 +76,7 @@ public class MyClient {
                         GetSnapshot(packet);
                     break;
                 case (int) PacketType.ACK:
-                    GetServerACK(packet);
+                    GetServerAck(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
                     //TODO remove in prod
@@ -128,10 +134,11 @@ public class MyClient {
         if (clientPlaying) {
             clientTime += Time.deltaTime;
             Interpolate();
+            Reconciliation();
         }
     }
     
-    public void AddClient(int playerId, CubeEntity cubeEntity) 
+    private void AddClient(int playerId, CubeEntity cubeEntity) 
     {
         //Debug.Log("Player " + id + "received broadcast for player " + playerId);
         if (!players.ContainsKey(playerId))
@@ -185,6 +192,7 @@ public class MyClient {
             Input.GetKeyDown(KeyCode.RightArrow)
         );
 
+        //ApplyClientInput(action, players[id].GetComponent<Rigidbody>());
         clientActions.Add(action);
         
         var packet = Packet.Obtain();
@@ -197,6 +205,38 @@ public class MyClient {
         packet.buffer.Flush();
 
         SendReliablePacket(packet, 2f);
+    }
+    
+    private void ApplyClientInput(Actions action, CharacterController controller)
+    {
+        Transform transform = players[id].GetComponent<Transform>();
+        
+        // Rotate around y axis
+        float horizontal = action.left ? -1 : 0;
+        horizontal = action.right ? 1 : horizontal;
+        transform.Rotate(0, horizontal * rotateSpeed, 0);
+        // Move forward/backward
+        Vector3 forward = transform.TransformDirection(Vector3.forward);
+        float vertical = action.jump ? 1 : 0;
+        float curSpeed = speed * vertical;
+        controller.SimpleMove(forward * curSpeed);
+    }
+    
+    
+    private void ApplyClientInput(Actions action, Rigidbody rigidbody)
+    {
+        // 0 = jumps
+        // 1 = left
+        // 2 = right
+        if (action.jump) {
+            rigidbody.AddForceAtPosition(Vector3.up * 5, Vector3.zero, ForceMode.Impulse);
+        }
+        if (action.left) {
+            rigidbody.AddForceAtPosition(Vector3.left * 5, Vector3.zero, ForceMode.Impulse);
+        }
+        if (action.right) {
+            rigidbody.AddForceAtPosition(Vector3.right * 5, Vector3.zero, ForceMode.Impulse);
+        }
     }
     
     private void ResendIfExpired()
@@ -229,7 +269,7 @@ public class MyClient {
         }
     }
     
-    private void GetServerACK(Packet packet) {
+    private void GetServerAck(Packet packet) {
         int packetNumber = packet.buffer.GetInt();
         int quantity = packetNumber - lastRemoved;
         lastRemoved = packetNumber;
@@ -252,12 +292,33 @@ public class MyClient {
             interpolationBuffer.RemoveAt(0);
         }
     }
-    
-    public void SpawnPlayer(int playerId, CubeEntity playerCube)
+
+    private void Reconciliation()
+    {
+        CubeEntity cubeEntity = interpolationBuffer[interpolationBuffer.Count - 1].worldInfo.players[id];
+        GameObject gameObject = new GameObject();
+        gameObject.AddComponent<Rigidbody>();
+        gameObject.transform.position = cubeEntity.position;
+        gameObject.transform.eulerAngles = cubeEntity.eulerAngles;
+
+        foreach (Actions action in clientActions)
+        {
+            ApplyClientInput(action, gameObject.GetComponent<Rigidbody>());
+        }
+
+        if (gameObject.transform.position != players[id].transform.position + epsilon)
+            players[id].transform.position = gameObject.transform.position;
+        if (gameObject.transform.eulerAngles != players[id].transform.eulerAngles + epsilon)
+            players[id].transform.eulerAngles = gameObject.transform.eulerAngles;
+        
+        GameObject.Destroy(gameObject);
+    }
+
+    private void SpawnPlayer(int playerId, CubeEntity playerCube)
     {
         Vector3 position = playerCube.position;
         Quaternion rotation = Quaternion.Euler(playerCube.eulerAngles);
-        GameObject player = GameObject.Instantiate(playerPrefab, position, rotation) as GameObject;
+        GameObject player = GameObject.Instantiate(playerPrefab, position, rotation);
         players.Add(playerId, player);
     }
 
