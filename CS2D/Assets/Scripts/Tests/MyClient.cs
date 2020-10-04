@@ -33,7 +33,7 @@ public class MyClient {
     private int lastRemoved;
     private readonly float speed = 3.0f;
     private readonly float rotateSpeed = 3.0f;
-    private Vector3 epsilon;
+    private float epsilon;
 
 
     public MyClient(GameObject playerPrefab, Channel channel, IPEndPoint serverEndpoint, int pps, int id) {
@@ -42,7 +42,7 @@ public class MyClient {
         this.serverEndpoint = serverEndpoint;
         this.pps = pps;
         this.id = id;
-        epsilon = new Vector3(0.1f,0.1f,0.1f);
+        epsilon = 1f;
         players = new Dictionary<int, GameObject>();
         inputIndex = 0;
         lastRemoved = 0;
@@ -305,9 +305,12 @@ public class MyClient {
             ApplyClientInput(action, gameObject.GetComponent<Rigidbody>());
         }
 
-        if (gameObject.transform.position != players[id].transform.position + epsilon)
+        if (Vector3.Distance(gameObject.transform.position, players[id].transform.position) >= epsilon)
+        {
+            Debug.Log("Had to reconciliate from " + players[id].transform.position + " to " + gameObject.transform.position);
             players[id].transform.position = gameObject.transform.position;
-        if (gameObject.transform.eulerAngles != players[id].transform.eulerAngles + epsilon)
+        }
+        if (Vector3.Distance(gameObject.transform.eulerAngles, players[id].transform.eulerAngles) >= epsilon)
             players[id].transform.eulerAngles = gameObject.transform.eulerAngles;
         
         GameObject.Destroy(gameObject);
