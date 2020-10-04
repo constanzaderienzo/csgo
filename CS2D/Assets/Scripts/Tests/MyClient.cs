@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Net;
@@ -42,7 +43,7 @@ public class MyClient {
         this.serverEndpoint = serverEndpoint;
         this.pps = pps;
         this.id = id;
-        epsilon = 1f;
+        epsilon = 0.5f;
         players = new Dictionary<int, GameObject>();
         inputIndex = 0;
         lastRemoved = 0;
@@ -305,14 +306,17 @@ public class MyClient {
             ApplyClientInput(action, gameObject.GetComponent<Rigidbody>());
         }
 
-        if (Vector3.Distance(gameObject.transform.position, players[id].transform.position) >= epsilon)
+        if (Vector3.Distance(gameObject.transform.position, players[id].transform.position) >= epsilon ||
+            Math.Abs(Quaternion.Angle(gameObject.transform.rotation, players[id].transform.rotation)) >= 1e-3f)
         {
-            Debug.Log("Had to reconciliate from " + players[id].transform.position + " to " + gameObject.transform.position);
-            players[id].transform.position = gameObject.transform.position;
+            var position = gameObject.transform.position;
+            //Debug.Log("Had to reconciliate from " + players[id].transform.position + " to " + position);
+            //Debug.Log("Had to reconciliate from " + players[id].transform.eulerAngles + " to " + gameObject.transform.eulerAngles);
+
+            players[id].transform.position = position;
+            players[id].transform.rotation = gameObject.transform.rotation;
         }
-        if (Vector3.Distance(gameObject.transform.eulerAngles, players[id].transform.eulerAngles) >= epsilon)
-            players[id].transform.eulerAngles = gameObject.transform.eulerAngles;
-        
+
         GameObject.Destroy(gameObject);
     }
 
