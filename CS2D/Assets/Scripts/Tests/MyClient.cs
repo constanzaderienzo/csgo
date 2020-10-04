@@ -307,13 +307,9 @@ public class MyClient {
         }
 
         if (Vector3.Distance(gameObject.transform.position, players[id].transform.position) >= epsilon ||
-            Math.Abs(Quaternion.Angle(gameObject.transform.rotation, players[id].transform.rotation)) >= 1e-3f)
+            Math.Abs(Quaternion.Angle(gameObject.transform.rotation, players[id].transform.rotation)) >= epsilon)
         {
-            var position = gameObject.transform.position;
-            //Debug.Log("Had to reconciliate from " + players[id].transform.position + " to " + position);
-            //Debug.Log("Had to reconciliate from " + players[id].transform.eulerAngles + " to " + gameObject.transform.eulerAngles);
-
-            players[id].transform.position = position;
+            players[id].transform.position = gameObject.transform.position;
             players[id].transform.rotation = gameObject.transform.rotation;
         }
 
