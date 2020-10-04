@@ -193,7 +193,7 @@ public class MyClient {
             Input.GetKeyDown(KeyCode.RightArrow)
         );
 
-        //ApplyClientInput(action, players[id].GetComponent<Rigidbody>());
+        ApplyClientInput(action, players[id].GetComponent<Rigidbody>());
         clientActions.Add(action);
         
         var packet = Packet.Obtain();
@@ -223,6 +223,21 @@ public class MyClient {
         controller.SimpleMove(forward * curSpeed);
     }
 
+    private static void FakeApplyClientInput(Actions action, Rigidbody rigidbody)
+    {
+        // 0 = jumps
+        // 1 = left
+        // 2 = right
+        if (action.jump) {
+            rigidbody.AddForceAtPosition(Vector3.up * 10, Vector3.zero, ForceMode.Impulse);
+        }
+        if (action.left) {
+            rigidbody.AddForceAtPosition(Vector3.left * 5, Vector3.zero, ForceMode.Impulse);
+        }
+        if (action.right) {
+            rigidbody.AddForceAtPosition(Vector3.right * 5, Vector3.zero, ForceMode.Impulse);
+        }
+    }
     private static void ApplyClientInput(Actions action, Rigidbody rigidbody)
     {
         // 0 = jumps
@@ -309,6 +324,7 @@ public class MyClient {
         if (Vector3.Distance(gameObject.transform.position, players[id].transform.position) >= epsilon ||
             Math.Abs(Quaternion.Angle(gameObject.transform.rotation, players[id].transform.rotation)) >= epsilon)
         {
+            Debug.Log("Had to reconcile");
             players[id].transform.position = gameObject.transform.position;
             players[id].transform.rotation = gameObject.transform.rotation;
         }
