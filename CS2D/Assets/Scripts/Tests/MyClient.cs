@@ -221,9 +221,8 @@ public class MyClient {
         float curSpeed = speed * vertical;
         controller.SimpleMove(forward * curSpeed);
     }
-    
-    
-    private void ApplyClientInput(Actions action, Rigidbody rigidbody)
+
+    private static void ApplyClientInput(Actions action, Rigidbody rigidbody)
     {
         // 0 = jumps
         // 1 = left
@@ -286,7 +285,7 @@ public class MyClient {
         var previousTime = (interpolationBuffer[0]).packetNumber * (1f/pps);
         var nextTime =  interpolationBuffer[1].packetNumber * (1f/pps);
         var t =  (clientTime - previousTime) / (nextTime - previousTime); 
-        Snapshot.CreateInterpolatedAndApply(interpolationBuffer[0], interpolationBuffer[1], players, t);
+        Snapshot.CreateInterpolatedAndApply(interpolationBuffer[0], interpolationBuffer[1], players, t, id);
 
         if(clientTime > nextTime) {
             interpolationBuffer.RemoveAt(0);
