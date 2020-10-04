@@ -310,16 +310,18 @@ public class MyClient {
 
     private void Reconciliation()
     {
-        CubeEntity cubeEntity = interpolationBuffer[interpolationBuffer.Count - 1].worldInfo.players[id];
+        Snapshot snapshot = interpolationBuffer[interpolationBuffer.Count - 1];
+        CubeEntity cubeEntity = snapshot.worldInfo.players[id];
         GameObject gameObject = new GameObject();
         gameObject.AddComponent<Rigidbody>();
         gameObject.transform.position = cubeEntity.position;
         gameObject.transform.eulerAngles = cubeEntity.eulerAngles;
 
-        foreach (Actions action in clientActions)
+        for (int i = snapshot.packetNumber; i < clientActions.Count; i++)
         {
-            ApplyClientInput(action, gameObject.GetComponent<Rigidbody>());
+            ApplyClientInput(clientActions[i], gameObject.GetComponent<Rigidbody>());
         }
+
 
         if (Vector3.Distance(gameObject.transform.position, players[id].transform.position) >= epsilon ||
             Math.Abs(Quaternion.Angle(gameObject.transform.rotation, players[id].transform.rotation)) >= epsilon)
