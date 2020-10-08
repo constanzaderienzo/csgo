@@ -33,8 +33,7 @@ public class MyClient {
     private readonly Dictionary<int, GameObject> players;
     public int id;
     private int lastRemoved;
-    private readonly float speed = 3.0f;
-    private readonly float rotateSpeed = 3.0f;
+    private readonly float speed = 10.0f;
     private float epsilon;
     private List<Actions> queuedActions;
 
@@ -69,7 +68,7 @@ public class MyClient {
     {
         foreach (Actions action in queuedActions)
         {
-            ApplyClientInput(action, players[id].GetComponent<Rigidbody>());        
+            ApplyClientInput(action, players[id].GetComponent<CharacterController>());        
         }
 
         queuedActions.RemoveRange(0, queuedActions.Count);
@@ -222,9 +221,9 @@ public class MyClient {
         var action = new Actions(
             id,
             inputIndex, 
-            Input.GetKeyDown(KeyCode.Space), 
-            Input.GetKeyDown(KeyCode.LeftArrow), 
-            Input.GetKeyDown(KeyCode.RightArrow)
+            Input.GetKey(KeyCode.Space), 
+            Input.GetKey(KeyCode.LeftArrow), 
+            Input.GetKey(KeyCode.RightArrow)
         );
 
         //ApplyClientInput(action, players[id].GetComponent<Rigidbody>());
@@ -244,17 +243,19 @@ public class MyClient {
     
     private void ApplyClientInput(Actions action, CharacterController controller)
     {
-        Transform transform = players[id].GetComponent<Transform>();
-        
-        // Rotate around y axis
-        float horizontal = action.left ? -1 : 0;
-        horizontal = action.right ? 1 : horizontal;
-        transform.Rotate(0, horizontal * rotateSpeed, 0);
-        // Move forward/backward
-        Vector3 forward = transform.TransformDirection(Vector3.forward);
-        float vertical = action.jump ? 1 : 0;
-        float curSpeed = speed * vertical;
-        controller.SimpleMove(forward * curSpeed);
+        if (action.jump)
+        {
+            Vector3 direction = Vector3.up;
+            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+        }
+        if (action.left) {
+            Vector3 direction = Vector3.left;
+            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+        }
+        if (action.right) {
+            Vector3 direction = Vector3.right;
+            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+        }
     }
 
     private static void FakeApplyClientInput(Actions action, Rigidbody rigidbody)
@@ -354,7 +355,7 @@ public class MyClient {
 
         for (int i = snapshot.packetNumber; i < clientActions.Count; i++)
         {
-            ApplyClientInput(clientActions[i], gameObject.GetComponent<Rigidbody>());
+            ApplyClientInput(clientActions[i], gameObject.GetComponent<CharacterController>());
         }
 
 

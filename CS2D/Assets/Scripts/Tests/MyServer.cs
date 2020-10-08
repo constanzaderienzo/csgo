@@ -20,10 +20,11 @@ public class MyServer {
     private float serverTime = 0f;
     private int packetNumber = 0;
     private int pps;
+    private readonly float speed = 10.0f;
     private Dictionary<int, GameObject> clientsCubes;
     private Dictionary<int, ClientInfo> clients;
     private List<NewPlayerBroadcastEvent> newPlayerBroadcastEvents;
-    private Dictionary<Actions, Rigidbody> queuedClientInputs;
+    private Dictionary<Actions, CharacterController> queuedClientInputs;
 
     public MyServer(GameObject serverPrefab, Channel channel, int pps) {
         this.serverPrefab = serverPrefab;
@@ -32,7 +33,7 @@ public class MyServer {
         clientsCubes = new Dictionary<int, GameObject>();
         clients = new Dictionary<int, ClientInfo>();
         newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
-        queuedClientInputs = new Dictionary<Actions, Rigidbody>();
+        queuedClientInputs = new Dictionary<Actions, CharacterController>();
     }
 
     public void FixedUpdate()
@@ -42,13 +43,13 @@ public class MyServer {
 
     private void ApplyClientInputs()
     {
-        foreach (KeyValuePair<Actions, Rigidbody> entry in queuedClientInputs)
+        foreach (KeyValuePair<Actions, CharacterController> entry in queuedClientInputs)
         {
             
             ApplyClientInput(entry.Key, entry.Value);
 
         }
-        queuedClientInputs = new Dictionary<Actions, Rigidbody>();
+        queuedClientInputs = new Dictionary<Actions, CharacterController>();
     }
 
     public void UpdateServer() {
@@ -100,8 +101,8 @@ public class MyServer {
             if(action.inputIndex > client.lastInputApplied) {
                 // mover el cubo
                 client.lastInputApplied = action.inputIndex;
-                var rigidBody = clientsCubes[action.id].GetComponent<Rigidbody>();
-                queuedClientInputs.Add(action, rigidBody); 
+                var controller = clientsCubes[action.id].GetComponent<CharacterController>();
+                queuedClientInputs.Add(action, controller); 
             }
         }
         if(clientId != -1 && client != null)
@@ -129,6 +130,23 @@ public class MyServer {
         }
         if (action.right) {
            rigidbody.AddForceAtPosition(Vector3.right * 5, Vector3.zero, ForceMode.Impulse);
+        }
+    }
+    
+    private void ApplyClientInput(Actions action, CharacterController controller)
+    {
+        if (action.jump)
+        {
+            Vector3 direction = Vector3.up;
+            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+        }
+        if (action.left) {
+            Vector3 direction = Vector3.left;
+            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+        }
+        if (action.right) {
+            Vector3 direction = Vector3.right;
+            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
         }
     }
 
