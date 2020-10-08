@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
@@ -64,6 +65,16 @@ public class SimulationTest : MonoBehaviour
         }
         myServer.UpdateServer();        
     }
+
+    private void FixedUpdate()
+    {
+        foreach (MyClient client in clients.Values)
+        {
+            client.FixedUpdate();
+        }
+        myServer.FixedUpdate();
+    }
+
     private void CheckForPlayerJoinedAck()
     {
         List<int> toRemove = new List<int>();
@@ -111,7 +122,7 @@ public class SimulationTest : MonoBehaviour
         // In this case packet index is playerId
         packet.buffer.PutInt(newPlayerId);
         packet.buffer.Flush();
-        sentPlayerJoinEvents.Add(new ReliablePacket(packet, newPlayerId, 1f, time));
+        sentPlayerJoinEvents.Add(new ReliablePacket(packet, newPlayerId, 1f, time, -1));
         clients[newPlayerId].GetChannel().Send(packet, serverEndpoint);
         packet.Free();
     }

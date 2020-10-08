@@ -1,7 +1,10 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
+using Random = UnityEngine.Random;
+
 public class MyServer {
     public enum PacketType
     {
@@ -20,14 +23,32 @@ public class MyServer {
     private Dictionary<int, GameObject> clientsCubes;
     private Dictionary<int, ClientInfo> clients;
     private List<NewPlayerBroadcastEvent> newPlayerBroadcastEvents;
+    private Dictionary<Actions, Rigidbody> queuedClientInputs;
 
     public MyServer(GameObject serverPrefab, Channel channel, int pps) {
         this.serverPrefab = serverPrefab;
         this.channel = channel;
         this.pps = pps;
-        this.clientsCubes = new Dictionary<int, GameObject>();
-        this.clients = new Dictionary<int, ClientInfo>();
-        this.newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
+        clientsCubes = new Dictionary<int, GameObject>();
+        clients = new Dictionary<int, ClientInfo>();
+        newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
+        queuedClientInputs = new Dictionary<Actions, Rigidbody>();
+    }
+
+    public void FixedUpdate()
+    {
+        ApplyClientInputs();
+    }
+
+    private void ApplyClientInputs()
+    {
+        foreach (KeyValuePair<Actions, Rigidbody> entry in queuedClientInputs)
+        {
+            
+            ApplyClientInput(entry.Key, entry.Value);
+
+        }
+        queuedClientInputs = new Dictionary<Actions, Rigidbody>();
     }
 
     public void UpdateServer() {
@@ -80,7 +101,7 @@ public class MyServer {
                 // mover el cubo
                 client.lastInputApplied = action.inputIndex;
                 var rigidBody = clientsCubes[action.id].GetComponent<Rigidbody>();
-                ApplyClientInput(action, rigidBody);
+                queuedClientInputs.Add(action, rigidBody); 
             }
         }
         if(clientId != -1 && client != null)

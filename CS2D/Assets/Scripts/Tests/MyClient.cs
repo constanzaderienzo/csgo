@@ -18,7 +18,7 @@ public class MyClient {
     private readonly GameObject conciliateGameObject;
     private readonly Channel channel;
     private readonly IPEndPoint serverEndpoint;
-    private readonly List<Snapshot> interpolationBuffer = new List<Snapshot>();
+    private readonly List<Snapshot> interpolationBuffer;
     private readonly int requiredSnapshots = 3;
     private bool clientPlaying = false;
     private bool hasReceievedAck = false;
@@ -27,7 +27,8 @@ public class MyClient {
     private readonly int pps;
     private readonly List<Actions> clientActions;
     private readonly Dictionary<int, Actions> appliedActions;
-    private readonly List<ReliablePacket> packetsToSend = new List<ReliablePacket>();
+    private readonly List<ReliablePacket> packetsToSend;
+    private List<Packet> queuedInputs;
     private int inputIndex;    
     private readonly Dictionary<int, GameObject> players;
     public int id;
@@ -35,6 +36,7 @@ public class MyClient {
     private readonly float speed = 3.0f;
     private readonly float rotateSpeed = 3.0f;
     private float epsilon;
+    private List<Actions> queuedActions;
 
 
     public MyClient(GameObject playerPrefab, Channel channel, IPEndPoint serverEndpoint, int pps, int id) {
@@ -48,8 +50,40 @@ public class MyClient {
         inputIndex = 0;
         lastRemoved = 0;
         clientActions = new List<Actions>();
+        interpolationBuffer = new List<Snapshot>();
+        packetsToSend = new List<ReliablePacket>();
+        queuedInputs = new List<Packet>();
+        queuedActions = new List<Actions>();
     }
-    
+
+    public void FixedUpdate()
+    {
+        if (hasReceievedAck)
+        {
+            ApplyClientInputs();
+            SendQueuedInputs();
+        }
+    }
+
+    private void ApplyClientInputs()
+    {
+        foreach (Actions action in queuedActions)
+        {
+            ApplyClientInput(action, players[id].GetComponent<Rigidbody>());        
+        }
+
+        queuedActions.RemoveRange(0, queuedActions.Count);
+    }
+
+    private void SendQueuedInputs()
+    {
+        foreach (Packet packet in queuedInputs)
+        {
+            SendReliablePacket(packet, 2f);
+        }
+        queuedInputs.RemoveRange(0, queuedInputs.Count);
+    }
+
     public void UpdateClient() 
     {
         
@@ -165,7 +199,7 @@ public class MyClient {
 
     private void SendReliablePacket(Packet packet, float timeout)
     {
-        packetsToSend.Add(new ReliablePacket(packet, inputIndex, timeout, packetsTime));
+        packetsToSend.Add(new ReliablePacket(packet, inputIndex, timeout, packetsTime, id));
         channel.Send(packet, serverEndpoint);
     }
     
@@ -193,7 +227,8 @@ public class MyClient {
             Input.GetKeyDown(KeyCode.RightArrow)
         );
 
-        ApplyClientInput(action, players[id].GetComponent<Rigidbody>());
+        //ApplyClientInput(action, players[id].GetComponent<Rigidbody>());
+        queuedActions.Add(action);
         clientActions.Add(action);
         
         var packet = Packet.Obtain();
@@ -204,8 +239,7 @@ public class MyClient {
             currentAction.SerializeInput(packet.buffer);
         }
         packet.buffer.Flush();
-
-        SendReliablePacket(packet, 2f);
+        queuedInputs.Add(packet);
     }
     
     private void ApplyClientInput(Actions action, CharacterController controller)
@@ -238,6 +272,7 @@ public class MyClient {
             rigidbody.AddForceAtPosition(Vector3.right * 5, Vector3.zero, ForceMode.Impulse);
         }
     }
+    
     private static void ApplyClientInput(Actions action, Rigidbody rigidbody)
     {
         // 0 = jumps
@@ -260,7 +295,7 @@ public class MyClient {
         {
             if(packetsToSend[i].CheckIfExpired(packetsTime))
             {
-                Debug.Log("Resending packet " + packetsToSend[i].packetIndex + "...");
+                Debug.Log("Resending packet " + packetsToSend[i].packetIndex + " id " + packetsToSend[i].id);
                 Resend(i);
             }
         }
@@ -280,7 +315,7 @@ public class MyClient {
         }
         if(toRemove != -1)
         {
-            packetsToSend.RemoveAt(toRemove);
+            packetsToSend.RemoveRange(0, toRemove);
         }
     }
     
