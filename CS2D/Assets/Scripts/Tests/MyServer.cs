@@ -21,6 +21,7 @@ public class MyServer {
     private int packetNumber = 0;
     private int pps;
     private readonly float speed = 10.0f;
+    public float gravity = 50.0F;
     private Dictionary<int, GameObject> clientsCubes;
     private Dictionary<int, ClientInfo> clients;
     private List<NewPlayerBroadcastEvent> newPlayerBroadcastEvents;
@@ -132,22 +133,42 @@ public class MyServer {
            rigidbody.AddForceAtPosition(Vector3.right * 5, Vector3.zero, ForceMode.Impulse);
         }
     }
-    
+
     private void ApplyClientInput(Actions action, CharacterController controller)
     {
-        if (action.jump)
+        Vector3 direction = new Vector3();
+        if (action.jump && controller.isGrounded)
         {
-            Vector3 direction = Vector3.up;
-            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+            direction = Vector3.up;
+            controller.Move(direction * (speed * 10 * Time.fixedDeltaTime));
         }
-        if (action.left) {
-            Vector3 direction = Vector3.left;
-            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+
+        if (action.left)
+        {
+            direction = Vector3.left;
+            controller.Move(direction * (speed * Time.fixedDeltaTime));
         }
-        if (action.right) {
-            Vector3 direction = Vector3.right;
-            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+
+        if (action.right)
+        {
+            direction = Vector3.right;
+            controller.Move(direction * (speed * Time.fixedDeltaTime));
         }
+
+        if (action.up)
+        {
+            direction = Vector3.forward;
+            controller.Move(direction * (speed * Time.fixedDeltaTime));
+        }
+
+        if (action.down)
+        {
+            direction = Vector3.back;
+            controller.Move(direction * (speed * Time.fixedDeltaTime));
+        }
+
+        direction.y -= gravity * Time.fixedDeltaTime;
+        controller.Move(direction * Time.fixedDeltaTime);
     }
 
     private void SendSnapshot()

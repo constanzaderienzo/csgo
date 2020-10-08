@@ -34,6 +34,7 @@ public class MyClient {
     public int id;
     private int lastRemoved;
     private readonly float speed = 10.0f;
+    public float gravity = 50.0F;
     private float epsilon;
     private List<Actions> queuedActions;
 
@@ -223,7 +224,9 @@ public class MyClient {
             inputIndex, 
             Input.GetKey(KeyCode.Space), 
             Input.GetKey(KeyCode.LeftArrow), 
-            Input.GetKey(KeyCode.RightArrow)
+            Input.GetKey(KeyCode.RightArrow),
+            Input.GetKey(KeyCode.UpArrow),
+            Input.GetKey(KeyCode.DownArrow)
         );
 
         //ApplyClientInput(action, players[id].GetComponent<Rigidbody>());
@@ -243,19 +246,32 @@ public class MyClient {
     
     private void ApplyClientInput(Actions action, CharacterController controller)
     {
-        if (action.jump)
+        Vector3 direction = new Vector3();
+        if (action.jump && controller.isGrounded)
         {
-            Vector3 direction = Vector3.up;
-            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+            direction = Vector3.up;
+            controller.Move(direction * (speed * 10 * Time.fixedDeltaTime)); 
         }
         if (action.left) {
-            Vector3 direction = Vector3.left;
+            direction = Vector3.left;
             controller.Move(direction * (speed * Time.fixedDeltaTime)); 
         }
         if (action.right) {
-            Vector3 direction = Vector3.right;
+            direction = Vector3.right;
             controller.Move(direction * (speed * Time.fixedDeltaTime)); 
         }
+        if (action.up) {
+            direction = Vector3.forward;
+            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+        }
+        if (action.down) {
+            direction = Vector3.back;
+            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+        }
+
+        direction.y -= gravity * Time.fixedDeltaTime;
+        controller.Move(direction * Time.fixedDeltaTime);
+
     }
 
     private static void FakeApplyClientInput(Actions action, Rigidbody rigidbody)
@@ -353,18 +369,19 @@ public class MyClient {
         gameObject.transform.position = cubeEntity.position;
         gameObject.transform.eulerAngles = cubeEntity.eulerAngles;
 
-        for (int i = snapshot.packetNumber; i < clientActions.Count; i++)
+        for (int i = snapshot.packetNumber + 1; i < clientActions.Count; i++)
         {
             ApplyClientInput(clientActions[i], gameObject.GetComponent<CharacterController>());
         }
 
 
-        if (Vector3.Distance(gameObject.transform.position, players[id].transform.position) >= epsilon ||
-            Math.Abs(Quaternion.Angle(gameObject.transform.rotation, players[id].transform.rotation)) >= epsilon)
+        
+        //Math.Abs(Quaternion.Angle(gameObject.transform.rotation, players[id].transform.rotation)) >= epsilon)
+        if (Vector3.Distance(gameObject.transform.position, players[id].transform.position) >= epsilon) 
         {
             Debug.Log("Had to reconcile");
             players[id].transform.position = gameObject.transform.position;
-            players[id].transform.rotation = gameObject.transform.rotation;
+            //players[id].transform.rotation = gameObject.transform.rotation;
         }
 
         GameObject.Destroy(gameObject);

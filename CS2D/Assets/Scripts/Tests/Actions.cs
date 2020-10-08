@@ -9,17 +9,21 @@ public class Actions
     public bool jump;
     public bool left;
     public bool right;
+    public bool up;
+    public bool down;
 
     // 0 = jumps
     // 1 = left
     // 2 = right
 
-    public Actions(int id, int index, bool jump, bool left, bool right) {
+    public Actions(int id, int index, bool jump, bool left, bool right, bool up, bool down) {
         this.id         = id;
-        this.inputIndex = index;
+        inputIndex = index;
         this.jump       = jump;
         this.left       = left;
         this.right      = right;
+        this.up = up;
+        this.down = down;
     }
 
     public Actions() {
@@ -31,6 +35,8 @@ public class Actions
         buffer.PutBit(jump);
         buffer.PutBit(left);
         buffer.PutBit(right);
+        buffer.PutBit(up);
+        buffer.PutBit(down);
     }
 
     public void DeserializeInput(BitBuffer buffer) {
@@ -39,6 +45,8 @@ public class Actions
         jump        = buffer.GetBit();
         left        = buffer.GetBit();
         right       = buffer.GetBit();
+        up = buffer.GetBit();
+        down = buffer.GetBit();
     }
     
 }
