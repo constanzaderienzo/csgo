@@ -63,7 +63,7 @@ public class WorldInfo
             {
                 Vector3 position = playerCube.position;
                 Quaternion rotation = Quaternion.Euler(playerCube.eulerAngles);
-                Debug.Log("Instanciating player " + playerId);
+                Debug.Log("Instantiating player " + playerId);
                 GameObject player = GameObject.Instantiate(otherPlayerPrefab, position, rotation);
                 player.name = playerId.ToString();
                 currentPlayers.Add(playerId, player);                
@@ -73,10 +73,9 @@ public class WorldInfo
         return currentPlayers;
     }
 
-    public void addPlayer(int clientId, CubeEntity clientEntity, ClientInfo clientInfo)
+    public void AddPlayer(int clientId, CubeEntity clientEntity, ClientInfo clientInfo)
     {
         players[clientId] = clientEntity;
         playersInfo[clientId] = clientInfo;
-
     }
 }

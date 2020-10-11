@@ -197,7 +197,7 @@ public class MyServer {
         {
             CubeEntity clientEntity = new CubeEntity(clientsCubes[clientId]);
             ClientInfo clientInfo = new ClientInfo(clients[clientId]);
-            currentWorldInfo.addPlayer(clientId, clientEntity, clientInfo);
+            currentWorldInfo.AddPlayer(clientId, clientEntity, clientInfo);
         }
 
         return currentWorldInfo;
