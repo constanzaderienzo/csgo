@@ -37,7 +37,13 @@ public class Snapshot
 
         foreach (var playerId in previous.worldInfo.players.Keys)
         {
-            if (playerId != id)
+            bool isDead = false;
+            if (previous.worldInfo.playersInfo[playerId].isDead)
+            {
+                Debug.Log("Player " + playerId + " is dead");
+                isDead = true;
+            }
+            if (playerId != id && !isDead)
             {
                 var previousCube = previous.worldInfo.players[playerId];
                 var nextCube = next.worldInfo.players[playerId];

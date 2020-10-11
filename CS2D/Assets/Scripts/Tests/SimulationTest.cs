@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class SimulationTest : MonoBehaviour
 {
@@ -27,8 +28,10 @@ public class SimulationTest : MonoBehaviour
 
     private Dictionary<int, MyClient> clients;
     private List<ReliablePacket> sentPlayerJoinEvents;
-    [SerializeField] private GameObject serverPrefab;
-    [SerializeField] private GameObject clientPrefab;
+    [SerializeField] GameObject playerServerPrefab;
+    [SerializeField] GameObject playerClientPrefab;
+    [SerializeField] GameObject otherPlayerClientPrefab;
+    [SerializeField] GameObject playerUIPrefab;
 
     // Start is called before the first frame update
     void Start() {
@@ -37,7 +40,7 @@ public class SimulationTest : MonoBehaviour
         clients = new Dictionary<int, MyClient>();
         channel = new Channel(channelPort);
         serverEndpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), channelPort);
-        myServer = new MyServer(serverPrefab, channel, pps);
+        myServer = new MyServer(playerServerPrefab, channel, pps);
         sentPlayerJoinEvents = new List<ReliablePacket>();
     }
 
@@ -107,7 +110,7 @@ public class SimulationTest : MonoBehaviour
                 if(clientId == 1)
                 {
                     client.id = clientId;
-                    CubeEntity cube = new CubeEntity(clientPrefab);
+                    CubeEntity cube = new CubeEntity(playerClientPrefab);
                 }
                 return true;
             }
@@ -148,7 +151,7 @@ public class SimulationTest : MonoBehaviour
         int clientId = clients.Count + 1;
         Channel clientChannel = new Channel(9000 + clientId);
         Debug.Log("Creating new client with id " + clientId);
-        MyClient client = new MyClient(clientPrefab, clientChannel, serverEndpoint, pps, clientId);
+        MyClient client = new MyClient(playerClientPrefab, otherPlayerClientPrefab, playerUIPrefab, clientChannel, serverEndpoint, pps, clientId);
         clients.Add(clientId, client);
         return clientId;
     }

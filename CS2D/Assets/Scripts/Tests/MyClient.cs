@@ -15,7 +15,10 @@ public class MyClient {
         NEW_PLAYER_BROADCAST  = 4
     }
     private readonly GameObject playerPrefab;
+    private readonly GameObject otherPlayerPrefab;
     private readonly GameObject conciliateGameObject;
+    private readonly GameObject playerUIPrefab;
+    private GameObject playerUIInstance;
     private readonly Channel channel;
     private readonly IPEndPoint serverEndpoint;
     private readonly List<Snapshot> interpolationBuffer;
@@ -39,8 +42,11 @@ public class MyClient {
     private List<Actions> queuedActions;
 
 
-    public MyClient(GameObject playerPrefab, Channel channel, IPEndPoint serverEndpoint, int pps, int id) {
+    public MyClient(GameObject playerPrefab, GameObject otherPlayerClientPrefab, GameObject playerUIPrefab, Channel channel,
+        IPEndPoint serverEndpoint, int pps, int id) {
         this.playerPrefab = playerPrefab;
+        otherPlayerPrefab = otherPlayerClientPrefab;
+        this.playerUIPrefab = playerUIPrefab;
         this.channel = channel;
         this.serverEndpoint = serverEndpoint;
         this.pps = pps;
@@ -74,7 +80,7 @@ public class MyClient {
 
         queuedActions.RemoveRange(0, queuedActions.Count);
     }
-
+    
     private void SendQueuedInputs()
     {
         foreach (Packet packet in queuedInputs)
@@ -91,7 +97,7 @@ public class MyClient {
         {
             packetsTime += Time.deltaTime;
             SendClientInput();
-            ResendIfExpired();            
+            ResendIfExpired();         
         }
         
         ProcessPacket();
@@ -139,7 +145,7 @@ public class MyClient {
         Debug.Log("Doing set up for player " + id);
         // Discarding packet number (this is because im reusing the snapshot logic)
         packet.buffer.GetInt(); 
-        Dictionary<int, GameObject> currentPlayers = WorldInfo.DeserializeSetUp(packet.buffer, playerPrefab, id, players);
+        Dictionary<int, GameObject> currentPlayers = WorldInfo.DeserializeSetUp(packet.buffer, otherPlayerPrefab, id, players);
         foreach (var player in currentPlayers)
         {
             if (!players.ContainsKey(player.Key))
@@ -179,8 +185,12 @@ public class MyClient {
         if (!players.ContainsKey(playerId))
         {
             //TODO remove in prod
-            if(id == 1)
+            if (id == 1)
+            {
                 SpawnPlayer(playerId, cubeEntity);
+                Camera.main.GetComponent<CameraFollow>().SetTarget(players[1].transform);
+
+            }
         }
         //Send ACK
         SendNewPlayerAck(playerId, (int) PacketType.NEW_PLAYER_BROADCAST);
@@ -219,17 +229,22 @@ public class MyClient {
     private void SendClientInput() 
     {
         inputIndex += 1;
+        int hitPlayerId = -1;
+        if (Input.GetMouseButtonDown(0))
+        {
+            hitPlayerId = CheckForHits();
+        }
         var action = new Actions(
             id,
             inputIndex, 
             Input.GetKey(KeyCode.Space), 
-            Input.GetKey(KeyCode.LeftArrow), 
-            Input.GetKey(KeyCode.RightArrow),
-            Input.GetKey(KeyCode.UpArrow),
-            Input.GetKey(KeyCode.DownArrow)
+            Input.GetKey(KeyCode.A), 
+            Input.GetKey(KeyCode.D),
+            Input.GetKey(KeyCode.W),
+            Input.GetKey(KeyCode.S),
+            players[id].transform.eulerAngles,
+            hitPlayerId
         );
-
-        //ApplyClientInput(action, players[id].GetComponent<Rigidbody>());
         queuedActions.Add(action);
         clientActions.Add(action);
         
@@ -243,67 +258,58 @@ public class MyClient {
         packet.buffer.Flush();
         queuedInputs.Add(packet);
     }
-    
+
+    private int CheckForHits()
+    {        // Bit shift the index of the layer (8) to get a bit mask
+        int layerMask = 1 << 8;
+
+        // This would cast rays only against colliders in layer 8.
+        // But instead we want to collide against everything except layer 8. The ~ operator does this, it inverts a bitmask.
+        layerMask = ~layerMask;
+
+        RaycastHit hit;
+        Transform transform = players[id].transform;
+        // Does the ray intersect any objects excluding the player layer
+        if (Physics.Raycast(transform.position, transform.TransformDirection(Vector3.forward), out hit, Mathf.Infinity, layerMask))
+        {
+            Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * hit.distance, Color.yellow);
+            Debug.Log("Did Hit " + hit.collider.gameObject.name );
+            int number;
+            if (Int32.TryParse(hit.collider.gameObject.name, out number))
+                return number;
+            return -1;
+        }
+        return -1;
+    }
+
     private void ApplyClientInput(Actions action, CharacterController controller)
     {
         Vector3 direction = new Vector3();
+        
         if (action.jump && controller.isGrounded)
         {
-            direction = Vector3.up;
+            direction = players[id].transform.up;
             controller.Move(direction * (speed * 10 * Time.fixedDeltaTime)); 
         }
         if (action.left) {
-            direction = Vector3.left;
+            direction = -players[id].transform.right;
             controller.Move(direction * (speed * Time.fixedDeltaTime)); 
         }
         if (action.right) {
-            direction = Vector3.right;
+            direction = players[id].transform.right;
             controller.Move(direction * (speed * Time.fixedDeltaTime)); 
         }
         if (action.up) {
-            direction = Vector3.forward;
+            direction = players[id].transform.forward;
             controller.Move(direction * (speed * Time.fixedDeltaTime)); 
         }
         if (action.down) {
-            direction = Vector3.back;
+            direction = -players[id].transform.forward;
             controller.Move(direction * (speed * Time.fixedDeltaTime)); 
         }
 
         direction.y -= gravity * Time.fixedDeltaTime;
         controller.Move(direction * Time.fixedDeltaTime);
-
-    }
-
-    private static void FakeApplyClientInput(Actions action, Rigidbody rigidbody)
-    {
-        // 0 = jumps
-        // 1 = left
-        // 2 = right
-        if (action.jump) {
-            rigidbody.AddForceAtPosition(Vector3.up * 10, Vector3.zero, ForceMode.Impulse);
-        }
-        if (action.left) {
-            rigidbody.AddForceAtPosition(Vector3.left * 5, Vector3.zero, ForceMode.Impulse);
-        }
-        if (action.right) {
-            rigidbody.AddForceAtPosition(Vector3.right * 5, Vector3.zero, ForceMode.Impulse);
-        }
-    }
-    
-    private static void ApplyClientInput(Actions action, Rigidbody rigidbody)
-    {
-        // 0 = jumps
-        // 1 = left
-        // 2 = right
-        if (action.jump) {
-            rigidbody.AddForceAtPosition(Vector3.up * 5, Vector3.zero, ForceMode.Impulse);
-        }
-        if (action.left) {
-            rigidbody.AddForceAtPosition(Vector3.left * 5, Vector3.zero, ForceMode.Impulse);
-        }
-        if (action.right) {
-            rigidbody.AddForceAtPosition(Vector3.right * 5, Vector3.zero, ForceMode.Impulse);
-        }
     }
     
     private void ResendIfExpired()
@@ -373,15 +379,11 @@ public class MyClient {
         {
             ApplyClientInput(clientActions[i], gameObject.GetComponent<CharacterController>());
         }
-
-
         
-        //Math.Abs(Quaternion.Angle(gameObject.transform.rotation, players[id].transform.rotation)) >= epsilon)
         if (Vector3.Distance(gameObject.transform.position, players[id].transform.position) >= epsilon) 
         {
             Debug.Log("Had to reconcile");
             players[id].transform.position = gameObject.transform.position;
-            //players[id].transform.rotation = gameObject.transform.rotation;
         }
 
         GameObject.Destroy(gameObject);
@@ -391,8 +393,21 @@ public class MyClient {
     {
         Vector3 position = playerCube.position;
         Quaternion rotation = Quaternion.Euler(playerCube.eulerAngles);
-        GameObject player = GameObject.Instantiate(playerPrefab, position, rotation);
+        GameObject player; 
+        if (playerId == id)
+        {
+            Debug.Log("In own");
+            player = GameObject.Instantiate(playerPrefab, position, rotation);
+            playerUIInstance = GameObject.Instantiate(playerUIPrefab);
+        }
+        else
+        {
+            player = GameObject.Instantiate(otherPlayerPrefab, position, rotation);
+
+        }
         players.Add(playerId, player);
+        player.name = playerId.ToString();
+        Debug.Log("Setting camera to player with id " + playerId);
     }
 
     public Channel GetChannel()

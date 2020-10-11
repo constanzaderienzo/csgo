@@ -25,7 +25,7 @@ public class MyServer {
     private Dictionary<int, GameObject> clientsCubes;
     private Dictionary<int, ClientInfo> clients;
     private List<NewPlayerBroadcastEvent> newPlayerBroadcastEvents;
-    private Dictionary<Actions, CharacterController> queuedClientInputs;
+    private Dictionary<Actions, GameObject> queuedClientInputs;
 
     public MyServer(GameObject serverPrefab, Channel channel, int pps) {
         this.serverPrefab = serverPrefab;
@@ -34,7 +34,7 @@ public class MyServer {
         clientsCubes = new Dictionary<int, GameObject>();
         clients = new Dictionary<int, ClientInfo>();
         newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
-        queuedClientInputs = new Dictionary<Actions, CharacterController>();
+        queuedClientInputs = new Dictionary<Actions, GameObject>();
     }
 
     public void FixedUpdate()
@@ -44,13 +44,13 @@ public class MyServer {
 
     private void ApplyClientInputs()
     {
-        foreach (KeyValuePair<Actions, CharacterController> entry in queuedClientInputs)
+        foreach (KeyValuePair<Actions, GameObject> entry in queuedClientInputs)
         {
             
             ApplyClientInput(entry.Key, entry.Value);
 
         }
-        queuedClientInputs = new Dictionary<Actions, CharacterController>();
+        queuedClientInputs = new Dictionary<Actions, GameObject>();
     }
 
     public void UpdateServer() {
@@ -102,15 +102,14 @@ public class MyServer {
             if(action.inputIndex > client.lastInputApplied) {
                 // mover el cubo
                 client.lastInputApplied = action.inputIndex;
-                var controller = clientsCubes[action.id].GetComponent<CharacterController>();
-                queuedClientInputs.Add(action, controller); 
+                queuedClientInputs.Add(action, clientsCubes[action.id]); 
             }
         }
         if(clientId != -1 && client != null)
-            SendACK(client.lastInputApplied, clients[clientId].ipEndPoint, (int) PacketType.ACK);
+            SendAck(client.lastInputApplied, clients[clientId].ipEndPoint, (int) PacketType.ACK);
     }
 
-    private void SendACK(int inputIndex, IPEndPoint clientEndpoint, int ackType) {
+    private void SendAck(int inputIndex, IPEndPoint clientEndpoint, int ackType) {
         var packet = Packet.Obtain();
         packet.buffer.PutInt(ackType);
         packet.buffer.PutInt(inputIndex);
@@ -118,57 +117,56 @@ public class MyServer {
         channel.Send(packet, clientEndpoint);
     }
 
-    private void ApplyClientInput(Actions action, Rigidbody rigidbody)
-    {
-        // 0 = jumps
-        // 1 = left
-        // 2 = right
-        if (action.jump) {
-           rigidbody.AddForceAtPosition(Vector3.up * 5, Vector3.zero, ForceMode.Impulse);
-        }
-        if (action.left) {
-           rigidbody.AddForceAtPosition(Vector3.left * 5, Vector3.zero, ForceMode.Impulse);
-        }
-        if (action.right) {
-           rigidbody.AddForceAtPosition(Vector3.right * 5, Vector3.zero, ForceMode.Impulse);
-        }
-    }
 
-    private void ApplyClientInput(Actions action, CharacterController controller)
+    private void ApplyClientInput(Actions action, GameObject player)
     {
+        CharacterController controller = player.GetComponent<CharacterController>();
         Vector3 direction = new Vector3();
         if (action.jump && controller.isGrounded)
         {
-            direction = Vector3.up;
+            direction = player.transform.up;
             controller.Move(direction * (speed * 10 * Time.fixedDeltaTime));
         }
 
         if (action.left)
         {
-            direction = Vector3.left;
+            direction = -player.transform.right;
             controller.Move(direction * (speed * Time.fixedDeltaTime));
         }
 
         if (action.right)
         {
-            direction = Vector3.right;
+            direction = player.transform.right;
             controller.Move(direction * (speed * Time.fixedDeltaTime));
         }
 
         if (action.up)
         {
-            direction = Vector3.forward;
+            direction = player.transform.forward;
             controller.Move(direction * (speed * Time.fixedDeltaTime));
         }
 
         if (action.down)
         {
-            direction = Vector3.back;
+            direction = -player.transform.forward;
             controller.Move(direction * (speed * Time.fixedDeltaTime));
         }
 
         direction.y -= gravity * Time.fixedDeltaTime;
         controller.Move(direction * Time.fixedDeltaTime);
+        player.transform.eulerAngles = new Vector3(action.rotationX, action.rotationY, action.rotationZ);
+
+        if(action.hitPlayerId != -1)
+            ApplyHit(action.hitPlayerId);
+    }
+
+    private void ApplyHit(int actionHitPlayerId)
+    {
+        clients[actionHitPlayerId].life -= 1;
+        if (clients[actionHitPlayerId].life <= 0)
+        {
+            clients[actionHitPlayerId].isDead = true;
+        }
     }
 
     private void SendSnapshot()
@@ -198,7 +196,8 @@ public class MyServer {
         foreach (var clientId in clientsCubes.Keys)
         {
             CubeEntity clientEntity = new CubeEntity(clientsCubes[clientId]);
-            currentWorldInfo.addPlayer(clientId, clientEntity);
+            ClientInfo clientInfo = new ClientInfo(clients[clientId]);
+            currentWorldInfo.addPlayer(clientId, clientEntity, clientInfo);
         }
 
         return currentWorldInfo;
@@ -212,7 +211,7 @@ public class MyServer {
         var last = clients.Keys.Count + 1;
         ClientInfo clientInfo = new ClientInfo(clientId, endPoint);
         clients.Add(last, clientInfo);
-        SendACK(last, endPoint, (int)PacketType.PLAYER_JOINED_GAME);
+        SendAck(last, endPoint, (int)PacketType.PLAYER_JOINED_GAME);
         AddPlayerToWorld(clientId);
     }
 
