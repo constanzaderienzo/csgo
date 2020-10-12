@@ -5,7 +5,7 @@ public class ClientInfo
     public int id;
     public IPEndPoint ipEndPoint;
     public int lastInputApplied;
-    public int life;
+    public float life;
     public bool isDead;
 
     public ClientInfo(int id, IPEndPoint endPoint)
@@ -13,7 +13,7 @@ public class ClientInfo
         this.id = id;
         ipEndPoint = endPoint;
         lastInputApplied = 0;
-        life = 10;
+        life = 100f;
         isDead = false;
     }
 
@@ -27,14 +27,14 @@ public class ClientInfo
 
     public void Serialize(BitBuffer buffer)
     {
-        buffer.PutInt(life);
+        buffer.PutFloat(life);
         buffer.PutBit(isDead);
     }
 
     public static ClientInfo DeserializeInfo(BitBuffer buffer)
     {
         ClientInfo playerInfo = new ClientInfo();
-        playerInfo.life = buffer.GetInt();
+        playerInfo.life = buffer.GetFloat();
         playerInfo.isDead = buffer.GetBit();
         return playerInfo;
     }

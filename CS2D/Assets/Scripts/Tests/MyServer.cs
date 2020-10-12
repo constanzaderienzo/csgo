@@ -156,14 +156,14 @@ public class MyServer {
         direction.y -= gravity * Time.fixedDeltaTime;
         controller.Move(direction * Time.fixedDeltaTime);
         player.transform.eulerAngles = new Vector3(action.rotationX, action.rotationY, action.rotationZ);
-
+        
         if(action.hitPlayerId != -1)
             ApplyHit(action.hitPlayerId, action.id);
     }
 
     private void ApplyHit(int actionHitPlayerId, int sourceId)
     {
-        clients[actionHitPlayerId].life -= 1;
+        clients[actionHitPlayerId].life -= 1f;
         if (clients[actionHitPlayerId].life <= 0)
         {
             clients[actionHitPlayerId].isDead = true;

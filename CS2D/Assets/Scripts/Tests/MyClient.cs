@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MyClient {
 
@@ -383,6 +384,7 @@ public class MyClient {
     {
         Snapshot snapshot = interpolationBuffer[interpolationBuffer.Count - 1];
         CubeEntity cubeEntity = snapshot.worldInfo.players[id];
+        PlayerInfoUpdate(snapshot.worldInfo.playersInfo[id]);
         GameObject gameObject = new GameObject();
         gameObject.AddComponent<Rigidbody>();
         gameObject.transform.position = cubeEntity.position;
@@ -400,6 +402,23 @@ public class MyClient {
         }
 
         GameObject.Destroy(gameObject);
+    }
+    
+    private void PlayerInfoUpdate(ClientInfo clientInfo)
+    {
+        Text text = GameObject.Find("HealthText").GetComponent<Text>();
+        if (clientInfo.life < 20)
+        {
+            text.text = "<color=red>" + clientInfo.life + "</color>";
+        }
+        else if (clientInfo.life < 60)
+        {
+            text.text = "<color=orange>" + clientInfo.life + "</color>";
+        }
+        else
+        {
+            text.text = clientInfo.life.ToString();
+        }
     }
 
     private void SpawnPlayer(int playerId, CubeEntity playerCube)
