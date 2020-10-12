@@ -50,6 +50,7 @@ public class Snapshot
                 CubeEntity.CreateInterpolatedAndApply(previousCube, nextCube, gameObjects[playerId] ,t);
             }
         }
+
     }
 
     public void Apply() {

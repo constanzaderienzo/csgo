@@ -12,7 +12,8 @@ public class MyServer {
         INPUT       = 1,
         ACK         = 2,
         PLAYER_JOINED_GAME   = 3,
-        NEW_PLAYER_BROADCAST  = 4
+        NEW_PLAYER_BROADCAST  = 4,
+        KILLFEED_EVENT = 5
     }
     private GameObject serverPrefab;
     private Channel channel;
@@ -22,7 +23,7 @@ public class MyServer {
     private int pps;
     private readonly float speed = 10.0f;
     public float gravity = 50.0F;
-    private Dictionary<int, GameObject> clientsCubes;
+    private Dictionary<int, GameObject> clientsGameObjects;
     private Dictionary<int, ClientInfo> clients;
     private List<NewPlayerBroadcastEvent> newPlayerBroadcastEvents;
     private Dictionary<Actions, GameObject> queuedClientInputs;
@@ -31,7 +32,7 @@ public class MyServer {
         this.serverPrefab = serverPrefab;
         this.channel = channel;
         this.pps = pps;
-        clientsCubes = new Dictionary<int, GameObject>();
+        clientsGameObjects = new Dictionary<int, GameObject>();
         clients = new Dictionary<int, ClientInfo>();
         newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
         queuedClientInputs = new Dictionary<Actions, GameObject>();
@@ -102,7 +103,7 @@ public class MyServer {
             if(action.inputIndex > client.lastInputApplied) {
                 // mover el cubo
                 client.lastInputApplied = action.inputIndex;
-                queuedClientInputs.Add(action, clientsCubes[action.id]); 
+                queuedClientInputs.Add(action, clientsGameObjects[action.id]); 
             }
         }
         if(clientId != -1 && client != null)
@@ -157,15 +158,31 @@ public class MyServer {
         player.transform.eulerAngles = new Vector3(action.rotationX, action.rotationY, action.rotationZ);
 
         if(action.hitPlayerId != -1)
-            ApplyHit(action.hitPlayerId);
+            ApplyHit(action.hitPlayerId, action.id);
     }
 
-    private void ApplyHit(int actionHitPlayerId)
+    private void ApplyHit(int actionHitPlayerId, int sourceId)
     {
         clients[actionHitPlayerId].life -= 1;
         if (clients[actionHitPlayerId].life <= 0)
         {
             clients[actionHitPlayerId].isDead = true;
+            SendKillfeedEvent(actionHitPlayerId, sourceId);
+        }
+    }
+
+    private void SendKillfeedEvent(int killedId, int sourceId)
+    {
+        foreach (var id in clients.Keys)
+        {
+            IPEndPoint clientEndpoint = clients[id].ipEndPoint;
+            var packet = Packet.Obtain();
+            packet.buffer.PutInt((int) PacketType.KILLFEED_EVENT);
+            packet.buffer.PutInt(killedId);
+            packet.buffer.PutInt(sourceId);
+            packet.buffer.Flush();
+            //Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);
+            channel.Send(packet, clientEndpoint);
         }
     }
 
@@ -180,7 +197,7 @@ public class MyServer {
                 var packet = Packet.Obtain();
                 packetNumber += 1;
                 packet.buffer.PutInt((int) PacketType.SNAPSHOT);
-                CubeEntity cubeEntity = new CubeEntity(clientsCubes[clientId]);
+                CubeEntity cubeEntity = new CubeEntity(clientsGameObjects[clientId]);
                 Snapshot currentSnapshot = new Snapshot(packetNumber, cubeEntity, currentWorldInfo);
                 currentSnapshot.Serialize(packet.buffer);
                 packet.buffer.Flush();
@@ -193,9 +210,9 @@ public class MyServer {
     private WorldInfo GenerateCurrentWorldInfo()
      {
         WorldInfo currentWorldInfo = new WorldInfo();
-        foreach (var clientId in clientsCubes.Keys)
+        foreach (var clientId in clientsGameObjects.Keys)
         {
-            CubeEntity clientEntity = new CubeEntity(clientsCubes[clientId]);
+            CubeEntity clientEntity = new CubeEntity(clientsGameObjects[clientId]);
             ClientInfo clientInfo = new ClientInfo(clients[clientId]);
             currentWorldInfo.AddPlayer(clientId, clientEntity, clientInfo);
         }
@@ -223,7 +240,7 @@ public class MyServer {
         Vector3 position = new Vector3(xPosition, yPosition, zPosition);
         Quaternion rotation = Quaternion.Euler(Vector3.zero);
         GameObject newCube = GameObject.Instantiate(serverPrefab, position, rotation);
-        clientsCubes[clientId] = newCube;
+        clientsGameObjects[clientId] = newCube;
         //Send Broadcast
         BroadcastNewPlayer(clientId, position, rotation.eulerAngles);
         //Send world info so the player can do initial set up
@@ -233,20 +250,18 @@ public class MyServer {
     private void SendWorldStatusToNewPlayer(int clientId)
     {
         WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
-        CubeEntity cubeEntity = new CubeEntity(clientsCubes[clientId]);
+        CubeEntity cubeEntity = new CubeEntity(clientsGameObjects[clientId]);
         Snapshot currentSnapshot = new Snapshot(1, cubeEntity, currentWorldInfo);
         var packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.PLAYER_JOINED_GAME);
         currentSnapshot.Serialize(packet.buffer);
         packet.buffer.Flush();
         channel.Send(packet, clients[clientId].ipEndPoint);
-        //packet.Free();
-        
     }
 
     private void BroadcastNewPlayer(int newPlayerId, Vector3 position, Vector3 rotation)
     {
-        CubeEntity newPlayer = new CubeEntity(clientsCubes[newPlayerId], position, rotation);
+        CubeEntity newPlayer = new CubeEntity(clientsGameObjects[newPlayerId], position, rotation);
         foreach (var id in clients.Keys)
         {
             IPEndPoint clientEndpoint = clients[id].ipEndPoint;

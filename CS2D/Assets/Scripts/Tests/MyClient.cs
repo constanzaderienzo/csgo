@@ -12,7 +12,8 @@ public class MyClient {
         INPUT       = 1,
         ACK         = 2,
         PLAYER_JOINED_GAME   = 3,
-        NEW_PLAYER_BROADCAST  = 4
+        NEW_PLAYER_BROADCAST  = 4,
+        KILLFEED_EVENT = 5
     }
     private readonly GameObject playerPrefab;
     private readonly GameObject otherPlayerPrefab;
@@ -40,6 +41,7 @@ public class MyClient {
     public float gravity = 50.0F;
     private float epsilon;
     private List<Actions> queuedActions;
+    private PlayerShoot playerShoot;
 
 
     public MyClient(GameObject playerPrefab, GameObject otherPlayerClientPrefab, GameObject playerUIPrefab, Channel channel,
@@ -131,6 +133,11 @@ public class MyClient {
                     NewPlayerBroadcastEvent newPlayer = NewPlayerBroadcastEvent.Deserialize(packet.buffer);
                     AddClient(newPlayer.playerId, newPlayer.newPlayer);
                     break;
+                case (int) PacketType.KILLFEED_EVENT:
+                    int killedId = packet.buffer.GetInt();
+                    int sourceId = packet.buffer.GetInt();
+                    Die(killedId, sourceId);
+                    break;
                 default:
                     Debug.Log("Unrecognized type in client" + packetType);
                     break;
@@ -188,7 +195,8 @@ public class MyClient {
             if (id == 1)
             {
                 SpawnPlayer(playerId, cubeEntity);
-                Camera.main.GetComponent<CameraFollow>().SetTarget(players[1].transform);
+                //Camera.main.GetComponent<CameraFollow>().SetTarget(players[1].transform);
+                playerShoot = players[id].GetComponent<PlayerShoot>();
 
             }
         }
@@ -230,9 +238,10 @@ public class MyClient {
     {
         inputIndex += 1;
         int hitPlayerId = -1;
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) && id == 1)
         {
-            hitPlayerId = CheckForHits();
+            //hitPlayerId = CheckForHits();
+            hitPlayerId = playerShoot.Shoot();
         }
         var action = new Actions(
             id,
@@ -260,7 +269,8 @@ public class MyClient {
     }
 
     private int CheckForHits()
-    {        // Bit shift the index of the layer (8) to get a bit mask
+    {        
+        // Bit shift the index of the layer (8) to get a bit mask
         int layerMask = 1 << 8;
 
         // This would cast rays only against colliders in layer 8.
@@ -269,10 +279,13 @@ public class MyClient {
 
         RaycastHit hit;
         Transform transform = players[id].transform;
+        
+        Vector3 positionWithOffset = transform.position + new Vector3(0f,2.1f,0f);
+        Vector3 directionWithOffset = Vector3.forward - new Vector3(0f,0.05f,0f);
         // Does the ray intersect any objects excluding the player layer
-        if (Physics.Raycast(transform.position, transform.TransformDirection(Vector3.forward), out hit, Mathf.Infinity, layerMask))
+        if (Physics.Raycast(positionWithOffset, transform.TransformDirection(directionWithOffset), out hit, Mathf.Infinity, layerMask))
         {
-            Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * hit.distance, Color.yellow);
+            Debug.DrawRay(positionWithOffset, transform.TransformDirection(directionWithOffset) * hit.distance, Color.yellow);
             Debug.Log("Did Hit " + hit.collider.gameObject.name );
             int number;
             if (Int32.TryParse(hit.collider.gameObject.name, out number))
@@ -360,7 +373,7 @@ public class MyClient {
         var nextTime =  interpolationBuffer[1].packetNumber * (1f/pps);
         var t =  (clientTime - previousTime) / (nextTime - previousTime); 
         Snapshot.CreateInterpolatedAndApply(interpolationBuffer[0], interpolationBuffer[1], players, t, id);
-
+        
         if(clientTime > nextTime) {
             interpolationBuffer.RemoveAt(0);
         }
@@ -413,5 +426,14 @@ public class MyClient {
     public Channel GetChannel()
     {
         return channel;
+    }
+
+    private void Die(int killedId, int sourceId)
+    {
+        Debug.Log("Player " + sourceId + " killed " + killedId);
+        Debug.Log("Player instance is " + playerUIInstance);
+        Killfeed killfeed = GameObject.Find("Killfeed").GetComponent<Killfeed>();
+        killfeed.OnKill(killedId,sourceId);
+        //GameManager.instance.onPlayerKilledCallback.Invoke(killedId, sourceId);
     }
 }
