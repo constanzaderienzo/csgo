@@ -167,8 +167,8 @@ public class MyClient {
 
     private void GetSnapshot(Packet packet)
     {
-        CubeEntity cubeEntity = new CubeEntity(players[id]);
-        Snapshot snapshot = new Snapshot(cubeEntity);
+        ClientEntity playerEntity = new ClientEntity(players[id]);
+        Snapshot snapshot = new Snapshot(playerEntity);
         snapshot.Deserialize(packet.buffer);
         int size = interpolationBuffer.Count;
         if(size == 0 || snapshot.packetNumber > interpolationBuffer[size - 1].packetNumber) {
@@ -187,7 +187,7 @@ public class MyClient {
         }
     }
     
-    private void AddClient(int playerId, CubeEntity cubeEntity) 
+    private void AddClient(int playerId, ClientEntity playerEntity) 
     {
         //Debug.Log("Player " + id + "received broadcast for player " + playerId);
         if (!players.ContainsKey(playerId))
@@ -195,7 +195,7 @@ public class MyClient {
             //TODO remove in prod
             if (id == 1)
             {
-                SpawnPlayer(playerId, cubeEntity);
+                SpawnPlayer(playerId, playerEntity);
                 //Camera.main.GetComponent<CameraFollow>().SetTarget(players[1].transform);
                 playerShoot = players[id].GetComponent<PlayerShoot>();
 
@@ -383,12 +383,12 @@ public class MyClient {
     private void Reconciliation()
     {
         Snapshot snapshot = interpolationBuffer[interpolationBuffer.Count - 1];
-        CubeEntity cubeEntity = snapshot.worldInfo.players[id];
+        ClientEntity playerEntity = snapshot.worldInfo.players[id];
         PlayerInfoUpdate(snapshot.worldInfo.playersInfo[id]);
         GameObject gameObject = new GameObject();
         gameObject.AddComponent<Rigidbody>();
-        gameObject.transform.position = cubeEntity.position;
-        gameObject.transform.eulerAngles = cubeEntity.eulerAngles;
+        gameObject.transform.position = playerEntity.position;
+        gameObject.transform.eulerAngles = playerEntity.eulerAngles;
 
         for (int i = snapshot.packetNumber + 1; i < clientActions.Count; i++)
         {
@@ -421,10 +421,10 @@ public class MyClient {
         }
     }
 
-    private void SpawnPlayer(int playerId, CubeEntity playerCube)
+    private void SpawnPlayer(int playerId, ClientEntity playerEntity)
     {
-        Vector3 position = playerCube.position;
-        Quaternion rotation = Quaternion.Euler(playerCube.eulerAngles);
+        Vector3 position = playerEntity.position;
+        Quaternion rotation = Quaternion.Euler(playerEntity.eulerAngles);
         GameObject player; 
         if (playerId == id)
         {

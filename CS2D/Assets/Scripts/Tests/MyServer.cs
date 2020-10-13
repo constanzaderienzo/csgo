@@ -118,7 +118,6 @@ public class MyServer {
         channel.Send(packet, clientEndpoint);
     }
 
-
     private void ApplyClientInput(Actions action, GameObject player)
     {
         CharacterController controller = player.GetComponent<CharacterController>();
@@ -163,8 +162,8 @@ public class MyServer {
 
     private void ApplyHit(int actionHitPlayerId, int sourceId)
     {
-        clients[actionHitPlayerId].life -= 1f;
-        if (clients[actionHitPlayerId].life <= 0)
+        clients[actionHitPlayerId].life -= 10f;
+        if (clients[actionHitPlayerId].life <= 0f)
         {
             clients[actionHitPlayerId].isDead = true;
             SendKillfeedEvent(actionHitPlayerId, sourceId);
@@ -197,8 +196,8 @@ public class MyServer {
                 var packet = Packet.Obtain();
                 packetNumber += 1;
                 packet.buffer.PutInt((int) PacketType.SNAPSHOT);
-                CubeEntity cubeEntity = new CubeEntity(clientsGameObjects[clientId]);
-                Snapshot currentSnapshot = new Snapshot(packetNumber, cubeEntity, currentWorldInfo);
+                ClientEntity playerEntity = new ClientEntity(clientsGameObjects[clientId]);
+                Snapshot currentSnapshot = new Snapshot(packetNumber, playerEntity, currentWorldInfo);
                 currentSnapshot.Serialize(packet.buffer);
                 packet.buffer.Flush();
                 //Debug.Log("Sending snapshot to client " + clientId);
@@ -212,7 +211,7 @@ public class MyServer {
         WorldInfo currentWorldInfo = new WorldInfo();
         foreach (var clientId in clientsGameObjects.Keys)
         {
-            CubeEntity clientEntity = new CubeEntity(clientsGameObjects[clientId]);
+            ClientEntity clientEntity = new ClientEntity(clientsGameObjects[clientId]);
             ClientInfo clientInfo = new ClientInfo(clients[clientId]);
             currentWorldInfo.AddPlayer(clientId, clientEntity, clientInfo);
         }
@@ -250,8 +249,8 @@ public class MyServer {
     private void SendWorldStatusToNewPlayer(int clientId)
     {
         WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
-        CubeEntity cubeEntity = new CubeEntity(clientsGameObjects[clientId]);
-        Snapshot currentSnapshot = new Snapshot(1, cubeEntity, currentWorldInfo);
+        ClientEntity playerEntity = new ClientEntity(clientsGameObjects[clientId]);
+        Snapshot currentSnapshot = new Snapshot(1, playerEntity, currentWorldInfo);
         var packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.PLAYER_JOINED_GAME);
         currentSnapshot.Serialize(packet.buffer);
@@ -261,7 +260,7 @@ public class MyServer {
 
     private void BroadcastNewPlayer(int newPlayerId, Vector3 position, Vector3 rotation)
     {
-        CubeEntity newPlayer = new CubeEntity(clientsGameObjects[newPlayerId], position, rotation);
+        ClientEntity newPlayer = new ClientEntity(clientsGameObjects[newPlayerId], position, rotation);
         foreach (var id in clients.Keys)
         {
             IPEndPoint clientEndpoint = clients[id].ipEndPoint;

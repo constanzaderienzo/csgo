@@ -110,7 +110,7 @@ public class SimulationTest : MonoBehaviour
                 if(clientId == 1)
                 {
                     client.id = clientId;
-                    CubeEntity cube = new CubeEntity(playerClientPrefab);
+                    ClientEntity player = new ClientEntity(playerClientPrefab);
                 }
                 return true;
             }

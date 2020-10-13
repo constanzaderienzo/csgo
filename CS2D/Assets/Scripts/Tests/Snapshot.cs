@@ -5,7 +5,7 @@ using UnityEngine;
 public class Snapshot 
 {
     public int packetNumber;
-    public CubeEntity cubeEntity;
+    public ClientEntity playerEntity;
     public WorldInfo worldInfo;
 
     public Snapshot(int packetNumber, WorldInfo worldInfo) {
@@ -13,14 +13,14 @@ public class Snapshot
         this.worldInfo = worldInfo;
     }
 
-    public Snapshot(int packetNumber, CubeEntity cubeEntity, WorldInfo worldInfo) {
+    public Snapshot(int packetNumber, ClientEntity playerEntity, WorldInfo worldInfo) {
         this.packetNumber = packetNumber;
-        this.cubeEntity = cubeEntity;
+        this.playerEntity = playerEntity;
         this.worldInfo = worldInfo;
     }
-    public Snapshot(CubeEntity cubeEntity) {
+    public Snapshot(ClientEntity playerEntity) {
         this.packetNumber = -1;
-        this.cubeEntity = cubeEntity;
+        this.playerEntity = playerEntity;
     }
 
     public void Serialize(BitBuffer buffer) {
@@ -47,14 +47,14 @@ public class Snapshot
             {
                 var previousCube = previous.worldInfo.players[playerId];
                 var nextCube = next.worldInfo.players[playerId];
-                CubeEntity.CreateInterpolatedAndApply(previousCube, nextCube, gameObjects[playerId] ,t);
+                ClientEntity.CreateInterpolatedAndApply(previousCube, nextCube, gameObjects[playerId] ,t);
             }
         }
 
     }
 
     public void Apply() {
-        foreach (CubeEntity cubeEntity in worldInfo.players.Values)
+        foreach (ClientEntity cubeEntity in worldInfo.players.Values)
         {
             cubeEntity.Apply();
         }

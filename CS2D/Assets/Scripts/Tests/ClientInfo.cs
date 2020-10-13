@@ -7,6 +7,7 @@ public class ClientInfo
     public int lastInputApplied;
     public float life;
     public bool isDead;
+    public float timeToRespawn;
 
     public ClientInfo(int id, IPEndPoint endPoint)
     {

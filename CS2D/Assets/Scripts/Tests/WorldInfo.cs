@@ -3,22 +3,22 @@ using UnityEngine;
 
 public class WorldInfo
 {
-    public Dictionary<int, CubeEntity> players;
+    public Dictionary<int, ClientEntity> players;
     public Dictionary<int, ClientInfo> playersInfo;
 
     public WorldInfo()
     {
-        players = new Dictionary<int, CubeEntity>();
+        players = new Dictionary<int, ClientEntity>();
         playersInfo = new Dictionary<int, ClientInfo>();
     }
 
-    public WorldInfo(Dictionary<int, CubeEntity> players, Dictionary<int, ClientInfo> clientInfos)
+    public WorldInfo(Dictionary<int, ClientEntity> players, Dictionary<int, ClientInfo> clientInfos)
     {
         this.players = players;
         playersInfo = clientInfos;
     }
 
-    public void addPlayer(int playerId, CubeEntity player)
+    public void addPlayer(int playerId, ClientEntity player)
     {
         players[playerId] = player;
         playersInfo[playerId] = new ClientInfo(playerId, null);
@@ -38,12 +38,12 @@ public class WorldInfo
     public static WorldInfo Deserialize(BitBuffer buffer)
     {
         int quantity = buffer.GetInt();
-        Dictionary<int, CubeEntity> currentPlayers = new Dictionary<int, CubeEntity>();
+        Dictionary<int, ClientEntity> currentPlayers = new Dictionary<int, ClientEntity>();
         Dictionary<int, ClientInfo> currentPlayersInfo = new Dictionary<int, ClientInfo>();
         for (int i = 0; i < quantity; i++)
         {
             int playerId = buffer.GetInt();
-            CubeEntity player = CubeEntity.DeserializeInfo(buffer);
+            ClientEntity player = ClientEntity.DeserializeInfo(buffer);
             ClientInfo playerInfo = ClientInfo.DeserializeInfo(buffer);
             currentPlayers[playerId] = player;
             currentPlayersInfo[playerId] = playerInfo;
@@ -58,11 +58,11 @@ public class WorldInfo
         for (int i = 0; i < quantity; i++)
         {
             int playerId = packetBuffer.GetInt();
-            CubeEntity playerCube = CubeEntity.DeserializeInfo(packetBuffer);
+            ClientEntity playerEntity = ClientEntity.DeserializeInfo(packetBuffer);
             if (playerId != id && !players.ContainsKey(playerId))
             {
-                Vector3 position = playerCube.position;
-                Quaternion rotation = Quaternion.Euler(playerCube.eulerAngles);
+                Vector3 position = playerEntity.position;
+                Quaternion rotation = Quaternion.Euler(playerEntity.eulerAngles);
                 Debug.Log("Instantiating player " + playerId);
                 GameObject player = GameObject.Instantiate(otherPlayerPrefab, position, rotation);
                 player.name = playerId.ToString();
@@ -73,7 +73,7 @@ public class WorldInfo
         return currentPlayers;
     }
 
-    public void AddPlayer(int clientId, CubeEntity clientEntity, ClientInfo clientInfo)
+    public void AddPlayer(int clientId, ClientEntity clientEntity, ClientInfo clientInfo)
     {
         players[clientId] = clientEntity;
         playersInfo[clientId] = clientInfo;
