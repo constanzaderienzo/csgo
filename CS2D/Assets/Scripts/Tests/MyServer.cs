@@ -27,6 +27,7 @@ public class MyServer {
     private Dictionary<int, ClientInfo> clients;
     private List<NewPlayerBroadcastEvent> newPlayerBroadcastEvents;
     private Dictionary<Actions, GameObject> queuedClientInputs;
+    private float timeToRespawn = 200f;
 
     public MyServer(GameObject serverPrefab, Channel channel, int pps) {
         this.serverPrefab = serverPrefab;
@@ -41,6 +42,44 @@ public class MyServer {
     public void FixedUpdate()
     {
         ApplyClientInputs();
+        RespawnDeadClients();
+    }
+
+    private void RespawnDeadClients()
+    {
+        foreach (var entry in clients)
+        {
+            ClientInfo clientInfo = entry.Value;
+            if (clientInfo.isDead)
+            {
+                if (clientInfo.timeToRespawn <= 0f)
+                {
+                    RespawnPlayer(entry.Key);
+                }
+                else
+                {
+                    clientInfo.timeToRespawn -= 1f;
+                }
+            }
+        }
+    }
+
+    private void RespawnPlayer(int clientId)
+    {
+        Debug.Log("Respawning player");
+        clientsGameObjects[clientId].transform.position = RandomSpawnPosition();
+        clientsGameObjects[clientId].SetActive(true);
+        clientsGameObjects[clientId].GetComponent<CharacterController>().enabled = false;
+        clients[clientId].isDead = false;
+        clients[clientId].life = 100f;
+    }
+
+    private Vector3 RandomSpawnPosition()
+    {
+        Vector3 minPosition = new Vector3(-80f, 0f, -23f);
+        Vector3 maxPosition = new Vector3(70f,0f, 24f);
+        // TODO check if its colliding
+        return new Vector3(Random.Range(minPosition.x, maxPosition.x), Random.Range(minPosition.y, maxPosition.y), Random.Range(minPosition.z, maxPosition.z) );
     }
 
     private void ApplyClientInputs()
@@ -166,6 +205,9 @@ public class MyServer {
         if (clients[actionHitPlayerId].life <= 0f)
         {
             clients[actionHitPlayerId].isDead = true;
+            clientsGameObjects[actionHitPlayerId].SetActive(false);
+            clientsGameObjects[actionHitPlayerId].GetComponent<CharacterController>().enabled = false;
+            clients[actionHitPlayerId].timeToRespawn = timeToRespawn;
             SendKillfeedEvent(actionHitPlayerId, sourceId);
         }
     }

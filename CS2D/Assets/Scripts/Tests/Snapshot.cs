@@ -37,17 +37,20 @@ public class Snapshot
 
         foreach (var playerId in previous.worldInfo.players.Keys)
         {
-            bool isDead = false;
-            if (previous.worldInfo.playersInfo[playerId].isDead)
+            bool isDead = previous.worldInfo.playersInfo[playerId].isDead;
+            if (isDead)
             {
-                Debug.Log("Player " + playerId + " is dead");
-                isDead = true;
+                gameObjects[playerId].SetActive(false);
+            }
+            else if (!gameObjects[playerId].activeSelf)
+            {
+                gameObjects[playerId].SetActive(true);
             }
             if (playerId != id && !isDead)
             {
-                var previousCube = previous.worldInfo.players[playerId];
-                var nextCube = next.worldInfo.players[playerId];
-                ClientEntity.CreateInterpolatedAndApply(previousCube, nextCube, gameObjects[playerId] ,t);
+                var previousPlayerEntity = previous.worldInfo.players[playerId];
+                var nextPlayerEntity = next.worldInfo.players[playerId];
+                ClientEntity.CreateInterpolatedAndApply(previousPlayerEntity, nextPlayerEntity, gameObjects[playerId] ,t);
             }
         }
 

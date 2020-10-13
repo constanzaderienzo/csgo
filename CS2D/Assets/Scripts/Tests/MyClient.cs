@@ -137,7 +137,7 @@ public class MyClient {
                 case (int) PacketType.KILLFEED_EVENT:
                     int killedId = packet.buffer.GetInt();
                     int sourceId = packet.buffer.GetInt();
-                    Die(killedId, sourceId);
+                    DeathEvent(killedId, sourceId);
                     break;
                 default:
                     Debug.Log("Unrecognized type in client" + packetType);
@@ -243,6 +243,13 @@ public class MyClient {
         {
             //hitPlayerId = CheckForHits();
             hitPlayerId = playerShoot.Shoot();
+            Animator animator = players[id].GetComponent<Animator>();
+            //animator.SetBool("Shoot_b", true);
+        }
+        else if(id == 1)
+        {
+            //Animator animator = players[id].GetComponent<Animator>();
+            //animator.SetBool("Shoot_b", false);
         }
         var action = new Actions(
             id,
@@ -447,12 +454,14 @@ public class MyClient {
         return channel;
     }
 
-    private void Die(int killedId, int sourceId)
+    private void DeathEvent(int killedId, int sourceId)
     {
-        Debug.Log("Player " + sourceId + " killed " + killedId);
-        Debug.Log("Player instance is " + playerUIInstance);
+        if (sourceId == id)
+        {
+            Text points = GameObject.Find("KillText").GetComponent<Text>();
+            points.text = (Int32.Parse(points.text) + 1).ToString();
+        }
         Killfeed killfeed = GameObject.Find("Killfeed").GetComponent<Killfeed>();
         killfeed.OnKill(killedId,sourceId);
-        //GameManager.instance.onPlayerKilledCallback.Invoke(killedId, sourceId);
     }
 }

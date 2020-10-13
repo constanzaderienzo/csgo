@@ -16,8 +16,6 @@ public class SimulationTest : MonoBehaviour
         NEW_PLAYER_BROADCAST  = 4
     }
     private Channel channel;
-    private Channel inputChannel;
-    private Channel ackChannel;
     private MyServer myServer;
 
     private bool connected = true;
@@ -49,6 +47,7 @@ public class SimulationTest : MonoBehaviour
         {
             client.GetChannel().Disconnect();
         }
+        channel.Disconnect();
     }
 
     // Update is called once per frame
