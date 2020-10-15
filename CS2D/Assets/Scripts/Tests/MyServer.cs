@@ -280,8 +280,8 @@ public class MyServer {
         float zPosition = Random.Range(-4f, 4f);
         Vector3 position = new Vector3(xPosition, yPosition, zPosition);
         Quaternion rotation = Quaternion.Euler(Vector3.zero);
-        GameObject newCube = GameObject.Instantiate(serverPrefab, position, rotation);
-        clientsGameObjects[clientId] = newCube;
+        GameObject newClient = GameObject.Instantiate(serverPrefab, position, rotation);
+        clientsGameObjects[clientId] = newClient;
         //Send Broadcast
         BroadcastNewPlayer(clientId, position, rotation.eulerAngles);
         //Send world info so the player can do initial set up
