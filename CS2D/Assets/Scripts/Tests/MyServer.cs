@@ -139,14 +139,14 @@ public class MyServer {
             action.DeserializeInput(packet.buffer);
             clientId = action.id;
             client = clients[clientId];
-            if(action.inputIndex > client.lastInputApplied) {
+            if(action.inputIndex > client.inputId) {
                 // mover el cubo
-                client.lastInputApplied = action.inputIndex;
+                client.inputId = action.inputIndex;
                 queuedClientInputs.Add(action, clientsGameObjects[action.id]); 
             }
         }
         if(clientId != -1 && client != null)
-            SendAck(client.lastInputApplied, clients[clientId].ipEndPoint, (int) PacketType.ACK);
+            SendAck(client.inputId, clients[clientId].ipEndPoint, (int) PacketType.ACK);
     }
 
     private void SendAck(int inputIndex, IPEndPoint clientEndpoint, int ackType) {

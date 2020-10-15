@@ -392,13 +392,14 @@ public class MyClient {
     {
         Snapshot snapshot = interpolationBuffer[interpolationBuffer.Count - 1];
         ClientEntity playerEntity = snapshot.worldInfo.players[id];
-        PlayerInfoUpdate(snapshot.worldInfo.playersInfo[id]);
+        ClientInfo playerInfo = snapshot.worldInfo.playersInfo[id];
+        PlayerInfoUpdate(playerInfo);
         GameObject gameObject = new GameObject();
-        gameObject.AddComponent<Rigidbody>();
+        gameObject.AddComponent<CharacterController>();
         gameObject.transform.position = playerEntity.position;
         gameObject.transform.eulerAngles = playerEntity.eulerAngles;
 
-        for (int i = snapshot.packetNumber + 1; i < clientActions.Count; i++)
+        for (int i = playerInfo.inputId + 1; i < clientActions.Count; i++)
         {
             ApplyClientInput(clientActions[i], gameObject.GetComponent<CharacterController>());
         }
