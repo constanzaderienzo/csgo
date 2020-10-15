@@ -1,7 +1,10 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
+using Random = UnityEngine.Random;
+
 public class MyServer {
     public enum PacketType
     {
@@ -9,7 +12,8 @@ public class MyServer {
         INPUT       = 1,
         ACK         = 2,
         PLAYER_JOINED_GAME   = 3,
-        NEW_PLAYER_BROADCAST  = 4
+        NEW_PLAYER_BROADCAST  = 4,
+        KILLFEED_EVENT = 5
     }
     private GameObject serverPrefab;
     private Channel channel;
@@ -17,17 +21,76 @@ public class MyServer {
     private float serverTime = 0f;
     private int packetNumber = 0;
     private int pps;
-    private Dictionary<int, GameObject> clientsCubes;
+    private readonly float speed = 10.0f;
+    public float gravity = 50.0F;
+    private Dictionary<int, GameObject> clientsGameObjects;
     private Dictionary<int, ClientInfo> clients;
     private List<NewPlayerBroadcastEvent> newPlayerBroadcastEvents;
+    private Dictionary<Actions, GameObject> queuedClientInputs;
+    private float timeToRespawn = 200f;
 
     public MyServer(GameObject serverPrefab, Channel channel, int pps) {
         this.serverPrefab = serverPrefab;
         this.channel = channel;
         this.pps = pps;
-        this.clientsCubes = new Dictionary<int, GameObject>();
-        this.clients = new Dictionary<int, ClientInfo>();
-        this.newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
+        clientsGameObjects = new Dictionary<int, GameObject>();
+        clients = new Dictionary<int, ClientInfo>();
+        newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
+        queuedClientInputs = new Dictionary<Actions, GameObject>();
+    }
+
+    public void FixedUpdate()
+    {
+        ApplyClientInputs();
+        RespawnDeadClients();
+    }
+
+    private void RespawnDeadClients()
+    {
+        foreach (var entry in clients)
+        {
+            ClientInfo clientInfo = entry.Value;
+            if (clientInfo.isDead)
+            {
+                if (clientInfo.timeToRespawn <= 0f)
+                {
+                    RespawnPlayer(entry.Key);
+                }
+                else
+                {
+                    clientInfo.timeToRespawn -= 1f;
+                }
+            }
+        }
+    }
+
+    private void RespawnPlayer(int clientId)
+    {
+        Debug.Log("Respawning player");
+        clientsGameObjects[clientId].transform.position = RandomSpawnPosition();
+        clientsGameObjects[clientId].SetActive(true);
+        clientsGameObjects[clientId].GetComponent<CharacterController>().enabled = false;
+        clients[clientId].isDead = false;
+        clients[clientId].life = 100f;
+    }
+
+    private Vector3 RandomSpawnPosition()
+    {
+        Vector3 minPosition = new Vector3(-80f, 0f, -23f);
+        Vector3 maxPosition = new Vector3(70f,0f, 24f);
+        // TODO check if its colliding
+        return new Vector3(Random.Range(minPosition.x, maxPosition.x), Random.Range(minPosition.y, maxPosition.y), Random.Range(minPosition.z, maxPosition.z) );
+    }
+
+    private void ApplyClientInputs()
+    {
+        foreach (KeyValuePair<Actions, GameObject> entry in queuedClientInputs)
+        {
+            
+            ApplyClientInput(entry.Key, entry.Value);
+
+        }
+        queuedClientInputs = new Dictionary<Actions, GameObject>();
     }
 
     public void UpdateServer() {
@@ -79,15 +142,14 @@ public class MyServer {
             if(action.inputIndex > client.lastInputApplied) {
                 // mover el cubo
                 client.lastInputApplied = action.inputIndex;
-                var rigidBody = clientsCubes[action.id].GetComponent<Rigidbody>();
-                ApplyClientInput(action, rigidBody);
+                queuedClientInputs.Add(action, clientsGameObjects[action.id]); 
             }
         }
         if(clientId != -1 && client != null)
-            SendACK(client.lastInputApplied, clients[clientId].ipEndPoint, (int) PacketType.ACK);
+            SendAck(client.lastInputApplied, clients[clientId].ipEndPoint, (int) PacketType.ACK);
     }
 
-    private void SendACK(int inputIndex, IPEndPoint clientEndpoint, int ackType) {
+    private void SendAck(int inputIndex, IPEndPoint clientEndpoint, int ackType) {
         var packet = Packet.Obtain();
         packet.buffer.PutInt(ackType);
         packet.buffer.PutInt(inputIndex);
@@ -95,19 +157,73 @@ public class MyServer {
         channel.Send(packet, clientEndpoint);
     }
 
-    private void ApplyClientInput(Actions action, Rigidbody rigidbody)
+    private void ApplyClientInput(Actions action, GameObject player)
     {
-        // 0 = jumps
-        // 1 = left
-        // 2 = right
-        if (action.jump) {
-           rigidbody.AddForceAtPosition(Vector3.up * 5, Vector3.zero, ForceMode.Impulse);
+        CharacterController controller = player.GetComponent<CharacterController>();
+        Vector3 direction = new Vector3();
+        if (action.jump && controller.isGrounded)
+        {
+            direction = player.transform.up;
+            controller.Move(direction * (speed * 10 * Time.fixedDeltaTime));
         }
-        if (action.left) {
-           rigidbody.AddForceAtPosition(Vector3.left * 5, Vector3.zero, ForceMode.Impulse);
+
+        if (action.left)
+        {
+            direction = -player.transform.right;
+            controller.Move(direction * (speed * Time.fixedDeltaTime));
         }
-        if (action.right) {
-           rigidbody.AddForceAtPosition(Vector3.right * 5, Vector3.zero, ForceMode.Impulse);
+
+        if (action.right)
+        {
+            direction = player.transform.right;
+            controller.Move(direction * (speed * Time.fixedDeltaTime));
+        }
+
+        if (action.up)
+        {
+            direction = player.transform.forward;
+            controller.Move(direction * (speed * Time.fixedDeltaTime));
+        }
+
+        if (action.down)
+        {
+            direction = -player.transform.forward;
+            controller.Move(direction * (speed * Time.fixedDeltaTime));
+        }
+
+        direction.y -= gravity * Time.fixedDeltaTime;
+        controller.Move(direction * Time.fixedDeltaTime);
+        player.transform.eulerAngles = new Vector3(action.rotationX, action.rotationY, action.rotationZ);
+        
+        if(action.hitPlayerId != -1)
+            ApplyHit(action.hitPlayerId, action.id);
+    }
+
+    private void ApplyHit(int actionHitPlayerId, int sourceId)
+    {
+        clients[actionHitPlayerId].life -= 10f;
+        if (clients[actionHitPlayerId].life <= 0f)
+        {
+            clients[actionHitPlayerId].isDead = true;
+            clientsGameObjects[actionHitPlayerId].SetActive(false);
+            clientsGameObjects[actionHitPlayerId].GetComponent<CharacterController>().enabled = false;
+            clients[actionHitPlayerId].timeToRespawn = timeToRespawn;
+            SendKillfeedEvent(actionHitPlayerId, sourceId);
+        }
+    }
+
+    private void SendKillfeedEvent(int killedId, int sourceId)
+    {
+        foreach (var id in clients.Keys)
+        {
+            IPEndPoint clientEndpoint = clients[id].ipEndPoint;
+            var packet = Packet.Obtain();
+            packet.buffer.PutInt((int) PacketType.KILLFEED_EVENT);
+            packet.buffer.PutInt(killedId);
+            packet.buffer.PutInt(sourceId);
+            packet.buffer.Flush();
+            //Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);
+            channel.Send(packet, clientEndpoint);
         }
     }
 
@@ -122,8 +238,8 @@ public class MyServer {
                 var packet = Packet.Obtain();
                 packetNumber += 1;
                 packet.buffer.PutInt((int) PacketType.SNAPSHOT);
-                CubeEntity cubeEntity = new CubeEntity(clientsCubes[clientId]);
-                Snapshot currentSnapshot = new Snapshot(packetNumber, cubeEntity, currentWorldInfo);
+                ClientEntity playerEntity = new ClientEntity(clientsGameObjects[clientId]);
+                Snapshot currentSnapshot = new Snapshot(packetNumber, playerEntity, currentWorldInfo);
                 currentSnapshot.Serialize(packet.buffer);
                 packet.buffer.Flush();
                 //Debug.Log("Sending snapshot to client " + clientId);
@@ -135,10 +251,11 @@ public class MyServer {
     private WorldInfo GenerateCurrentWorldInfo()
      {
         WorldInfo currentWorldInfo = new WorldInfo();
-        foreach (var clientId in clientsCubes.Keys)
+        foreach (var clientId in clientsGameObjects.Keys)
         {
-            CubeEntity clientEntity = new CubeEntity(clientsCubes[clientId]);
-            currentWorldInfo.addPlayer(clientId, clientEntity);
+            ClientEntity clientEntity = new ClientEntity(clientsGameObjects[clientId]);
+            ClientInfo clientInfo = new ClientInfo(clients[clientId]);
+            currentWorldInfo.AddPlayer(clientId, clientEntity, clientInfo);
         }
 
         return currentWorldInfo;
@@ -152,7 +269,7 @@ public class MyServer {
         var last = clients.Keys.Count + 1;
         ClientInfo clientInfo = new ClientInfo(clientId, endPoint);
         clients.Add(last, clientInfo);
-        SendACK(last, endPoint, (int)PacketType.PLAYER_JOINED_GAME);
+        SendAck(last, endPoint, (int)PacketType.PLAYER_JOINED_GAME);
         AddPlayerToWorld(clientId);
     }
 
@@ -164,7 +281,7 @@ public class MyServer {
         Vector3 position = new Vector3(xPosition, yPosition, zPosition);
         Quaternion rotation = Quaternion.Euler(Vector3.zero);
         GameObject newCube = GameObject.Instantiate(serverPrefab, position, rotation);
-        clientsCubes[clientId] = newCube;
+        clientsGameObjects[clientId] = newCube;
         //Send Broadcast
         BroadcastNewPlayer(clientId, position, rotation.eulerAngles);
         //Send world info so the player can do initial set up
@@ -174,20 +291,18 @@ public class MyServer {
     private void SendWorldStatusToNewPlayer(int clientId)
     {
         WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
-        CubeEntity cubeEntity = new CubeEntity(clientsCubes[clientId]);
-        Snapshot currentSnapshot = new Snapshot(1, cubeEntity, currentWorldInfo);
+        ClientEntity playerEntity = new ClientEntity(clientsGameObjects[clientId]);
+        Snapshot currentSnapshot = new Snapshot(1, playerEntity, currentWorldInfo);
         var packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.PLAYER_JOINED_GAME);
         currentSnapshot.Serialize(packet.buffer);
         packet.buffer.Flush();
         channel.Send(packet, clients[clientId].ipEndPoint);
-        //packet.Free();
-        
     }
 
     private void BroadcastNewPlayer(int newPlayerId, Vector3 position, Vector3 rotation)
     {
-        CubeEntity newPlayer = new CubeEntity(clientsCubes[newPlayerId], position, rotation);
+        ClientEntity newPlayer = new ClientEntity(clientsGameObjects[newPlayerId], position, rotation);
         foreach (var id in clients.Keys)
         {
             IPEndPoint clientEndpoint = clients[id].ipEndPoint;

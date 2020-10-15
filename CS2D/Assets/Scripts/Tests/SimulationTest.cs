@@ -1,7 +1,9 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class SimulationTest : MonoBehaviour
 {
@@ -14,8 +16,6 @@ public class SimulationTest : MonoBehaviour
         NEW_PLAYER_BROADCAST  = 4
     }
     private Channel channel;
-    private Channel inputChannel;
-    private Channel ackChannel;
     private MyServer myServer;
 
     private bool connected = true;
@@ -26,8 +26,10 @@ public class SimulationTest : MonoBehaviour
 
     private Dictionary<int, MyClient> clients;
     private List<ReliablePacket> sentPlayerJoinEvents;
-    [SerializeField] private GameObject serverPrefab;
-    [SerializeField] private GameObject clientPrefab;
+    [SerializeField] GameObject playerServerPrefab;
+    [SerializeField] GameObject playerClientPrefab;
+    [SerializeField] GameObject otherPlayerClientPrefab;
+    [SerializeField] GameObject playerUIPrefab;
 
     // Start is called before the first frame update
     void Start() {
@@ -36,7 +38,7 @@ public class SimulationTest : MonoBehaviour
         clients = new Dictionary<int, MyClient>();
         channel = new Channel(channelPort);
         serverEndpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), channelPort);
-        myServer = new MyServer(serverPrefab, channel, pps);
+        myServer = new MyServer(playerServerPrefab, channel, pps);
         sentPlayerJoinEvents = new List<ReliablePacket>();
     }
 
@@ -45,6 +47,7 @@ public class SimulationTest : MonoBehaviour
         {
             client.GetChannel().Disconnect();
         }
+        channel.Disconnect();
     }
 
     // Update is called once per frame
@@ -64,6 +67,16 @@ public class SimulationTest : MonoBehaviour
         }
         myServer.UpdateServer();        
     }
+
+    private void FixedUpdate()
+    {
+        foreach (MyClient client in clients.Values)
+        {
+            client.FixedUpdate();
+        }
+        myServer.FixedUpdate();
+    }
+
     private void CheckForPlayerJoinedAck()
     {
         List<int> toRemove = new List<int>();
@@ -96,7 +109,7 @@ public class SimulationTest : MonoBehaviour
                 if(clientId == 1)
                 {
                     client.id = clientId;
-                    CubeEntity cube = new CubeEntity(clientPrefab);
+                    ClientEntity player = new ClientEntity(playerClientPrefab);
                 }
                 return true;
             }
@@ -111,7 +124,7 @@ public class SimulationTest : MonoBehaviour
         // In this case packet index is playerId
         packet.buffer.PutInt(newPlayerId);
         packet.buffer.Flush();
-        sentPlayerJoinEvents.Add(new ReliablePacket(packet, newPlayerId, 1f, time));
+        sentPlayerJoinEvents.Add(new ReliablePacket(packet, newPlayerId, 1f, time, -1));
         clients[newPlayerId].GetChannel().Send(packet, serverEndpoint);
         packet.Free();
     }
@@ -137,7 +150,7 @@ public class SimulationTest : MonoBehaviour
         int clientId = clients.Count + 1;
         Channel clientChannel = new Channel(9000 + clientId);
         Debug.Log("Creating new client with id " + clientId);
-        MyClient client = new MyClient(clientPrefab, clientChannel, serverEndpoint, pps, clientId);
+        MyClient client = new MyClient(playerClientPrefab, otherPlayerClientPrefab, playerUIPrefab, clientChannel, serverEndpoint, pps, clientId);
         clients.Add(clientId, client);
         return clientId;
     }

@@ -5,7 +5,7 @@ using UnityEngine;
 public class Snapshot 
 {
     public int packetNumber;
-    public CubeEntity cubeEntity;
+    public ClientEntity playerEntity;
     public WorldInfo worldInfo;
 
     public Snapshot(int packetNumber, WorldInfo worldInfo) {
@@ -13,14 +13,14 @@ public class Snapshot
         this.worldInfo = worldInfo;
     }
 
-    public Snapshot(int packetNumber, CubeEntity cubeEntity, WorldInfo worldInfo) {
+    public Snapshot(int packetNumber, ClientEntity playerEntity, WorldInfo worldInfo) {
         this.packetNumber = packetNumber;
-        this.cubeEntity = cubeEntity;
+        this.playerEntity = playerEntity;
         this.worldInfo = worldInfo;
     }
-    public Snapshot(CubeEntity cubeEntity) {
+    public Snapshot(ClientEntity playerEntity) {
         this.packetNumber = -1;
-        this.cubeEntity = cubeEntity;
+        this.playerEntity = playerEntity;
     }
 
     public void Serialize(BitBuffer buffer) {
@@ -33,18 +33,31 @@ public class Snapshot
         worldInfo = WorldInfo.Deserialize(buffer);
     }
 
-    public static void CreateInterpolatedAndApply(Snapshot previous, Snapshot next, Dictionary<int, GameObject> gameObjects, float t) {
+    public static void CreateInterpolatedAndApply(Snapshot previous, Snapshot next, Dictionary<int, GameObject> gameObjects, float t, int id) {
 
         foreach (var playerId in previous.worldInfo.players.Keys)
         {
-            var previousCube = previous.worldInfo.players[playerId];
-            var nextCube = next.worldInfo.players[playerId];
-            CubeEntity.CreateInterpolatedAndApply(previousCube, nextCube, gameObjects[playerId] ,t);
+            bool isDead = previous.worldInfo.playersInfo[playerId].isDead;
+            if (isDead)
+            {
+                gameObjects[playerId].SetActive(false);
+            }
+            else if (!gameObjects[playerId].activeSelf)
+            {
+                gameObjects[playerId].SetActive(true);
+            }
+            if (playerId != id && !isDead)
+            {
+                var previousPlayerEntity = previous.worldInfo.players[playerId];
+                var nextPlayerEntity = next.worldInfo.players[playerId];
+                ClientEntity.CreateInterpolatedAndApply(previousPlayerEntity, nextPlayerEntity, gameObjects[playerId] ,t);
+            }
         }
+
     }
 
     public void Apply() {
-        foreach (CubeEntity cubeEntity in worldInfo.players.Values)
+        foreach (ClientEntity cubeEntity in worldInfo.players.Values)
         {
             cubeEntity.Apply();
         }

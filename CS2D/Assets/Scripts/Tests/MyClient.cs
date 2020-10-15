@@ -1,7 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MyClient {
 
@@ -11,38 +13,86 @@ public class MyClient {
         INPUT       = 1,
         ACK         = 2,
         PLAYER_JOINED_GAME   = 3,
-        NEW_PLAYER_BROADCAST  = 4
+        NEW_PLAYER_BROADCAST  = 4,
+        KILLFEED_EVENT = 5
     }
     private readonly GameObject playerPrefab;
+    private readonly GameObject otherPlayerPrefab;
+    private readonly GameObject conciliateGameObject;
+    private readonly GameObject playerUIPrefab;
+    private GameObject playerUIInstance;
     private readonly Channel channel;
     private readonly IPEndPoint serverEndpoint;
-    List<Snapshot> interpolationBuffer = new List<Snapshot>();
-    public int requiredSnapshots = 3;
+    private readonly List<Snapshot> interpolationBuffer;
+    private readonly int requiredSnapshots = 3;
     private bool clientPlaying = false;
     private bool hasReceievedAck = false;
     private float clientTime = 0f;
     private float packetsTime = 0f;
-    private int pps;
-    private List<Actions> clientActions;
-    private List<ReliablePacket> packetsToSend = new List<ReliablePacket>();
-    [SerializeField] int inputIndex;    
-    private Dictionary<int, GameObject> players;
+    private readonly int pps;
+    private readonly List<Actions> clientActions;
+    private readonly Dictionary<int, Actions> appliedActions;
+    private readonly List<ReliablePacket> packetsToSend;
+    private List<Packet> queuedInputs;
+    private int inputIndex;    
+    private readonly Dictionary<int, GameObject> players;
     public int id;
     private int lastRemoved;
+    private readonly float speed = 10.0f;
+    public float gravity = 50.0F;
+    private float epsilon;
+    private List<Actions> queuedActions;
+    private PlayerShoot playerShoot;
 
 
-    public MyClient(GameObject playerPrefab, Channel channel, IPEndPoint serverEndpoint, int pps, int id) {
+    public MyClient(GameObject playerPrefab, GameObject otherPlayerClientPrefab, GameObject playerUIPrefab, Channel channel,
+        IPEndPoint serverEndpoint, int pps, int id) {
         this.playerPrefab = playerPrefab;
+        otherPlayerPrefab = otherPlayerClientPrefab;
+        this.playerUIPrefab = playerUIPrefab;
         this.channel = channel;
         this.serverEndpoint = serverEndpoint;
         this.pps = pps;
-        this.players = new Dictionary<int, GameObject>();
         this.id = id;
-        this.inputIndex = 0;
-        this.lastRemoved = 0;
-        this.clientActions = new List<Actions>();
+        epsilon = 0.5f;
+        players = new Dictionary<int, GameObject>();
+        inputIndex = 0;
+        lastRemoved = 0;
+        clientActions = new List<Actions>();
+        interpolationBuffer = new List<Snapshot>();
+        packetsToSend = new List<ReliablePacket>();
+        queuedInputs = new List<Packet>();
+        queuedActions = new List<Actions>();
+    }
+
+    public void FixedUpdate()
+    {
+        if (hasReceievedAck)
+        {
+            ApplyClientInputs();
+            SendQueuedInputs();
+        }
+    }
+
+    private void ApplyClientInputs()
+    {
+        foreach (Actions action in queuedActions)
+        {
+            ApplyClientInput(action, players[id].GetComponent<CharacterController>());        
+        }
+
+        queuedActions.RemoveRange(0, queuedActions.Count);
     }
     
+    private void SendQueuedInputs()
+    {
+        foreach (Packet packet in queuedInputs)
+        {
+            SendReliablePacket(packet, 2f);
+        }
+        queuedInputs.RemoveRange(0, queuedInputs.Count);
+    }
+
     public void UpdateClient() 
     {
         
@@ -50,7 +100,7 @@ public class MyClient {
         {
             packetsTime += Time.deltaTime;
             SendClientInput();
-            ResendIfExpired();            
+            ResendIfExpired();         
         }
         
         ProcessPacket();
@@ -70,7 +120,7 @@ public class MyClient {
                         GetSnapshot(packet);
                     break;
                 case (int) PacketType.ACK:
-                    GetServerACK(packet);
+                    GetServerAck(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
                     //TODO remove in prod
@@ -83,6 +133,11 @@ public class MyClient {
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
                     NewPlayerBroadcastEvent newPlayer = NewPlayerBroadcastEvent.Deserialize(packet.buffer);
                     AddClient(newPlayer.playerId, newPlayer.newPlayer);
+                    break;
+                case (int) PacketType.KILLFEED_EVENT:
+                    int killedId = packet.buffer.GetInt();
+                    int sourceId = packet.buffer.GetInt();
+                    DeathEvent(killedId, sourceId);
                     break;
                 default:
                     Debug.Log("Unrecognized type in client" + packetType);
@@ -98,7 +153,7 @@ public class MyClient {
         Debug.Log("Doing set up for player " + id);
         // Discarding packet number (this is because im reusing the snapshot logic)
         packet.buffer.GetInt(); 
-        Dictionary<int, GameObject> currentPlayers = WorldInfo.DeserializeSetUp(packet.buffer, playerPrefab, id, players);
+        Dictionary<int, GameObject> currentPlayers = WorldInfo.DeserializeSetUp(packet.buffer, otherPlayerPrefab, id, players);
         foreach (var player in currentPlayers)
         {
             if (!players.ContainsKey(player.Key))
@@ -112,8 +167,8 @@ public class MyClient {
 
     private void GetSnapshot(Packet packet)
     {
-        CubeEntity cubeEntity = new CubeEntity(players[id]);
-        Snapshot snapshot = new Snapshot(cubeEntity);
+        ClientEntity playerEntity = new ClientEntity(players[id]);
+        Snapshot snapshot = new Snapshot(playerEntity);
         snapshot.Deserialize(packet.buffer);
         int size = interpolationBuffer.Count;
         if(size == 0 || snapshot.packetNumber > interpolationBuffer[size - 1].packetNumber) {
@@ -128,17 +183,23 @@ public class MyClient {
         if (clientPlaying) {
             clientTime += Time.deltaTime;
             Interpolate();
+            Reconciliation();
         }
     }
     
-    public void AddClient(int playerId, CubeEntity cubeEntity) 
+    private void AddClient(int playerId, ClientEntity playerEntity) 
     {
         //Debug.Log("Player " + id + "received broadcast for player " + playerId);
         if (!players.ContainsKey(playerId))
         {
             //TODO remove in prod
-            if(id == 1)
-                SpawnPlayer(playerId, cubeEntity);
+            if (id == 1)
+            {
+                SpawnPlayer(playerId, playerEntity);
+                //Camera.main.GetComponent<CameraFollow>().SetTarget(players[1].transform);
+                playerShoot = players[id].GetComponent<PlayerShoot>();
+
+            }
         }
         //Send ACK
         SendNewPlayerAck(playerId, (int) PacketType.NEW_PLAYER_BROADCAST);
@@ -157,7 +218,7 @@ public class MyClient {
 
     private void SendReliablePacket(Packet packet, float timeout)
     {
-        packetsToSend.Add(new ReliablePacket(packet, inputIndex, timeout, packetsTime));
+        packetsToSend.Add(new ReliablePacket(packet, inputIndex, timeout, packetsTime, id));
         channel.Send(packet, serverEndpoint);
     }
     
@@ -177,14 +238,31 @@ public class MyClient {
     private void SendClientInput() 
     {
         inputIndex += 1;
+        int hitPlayerId = -1;
+        if (Input.GetMouseButtonDown(0) && id == 1)
+        {
+            //hitPlayerId = CheckForHits();
+            hitPlayerId = playerShoot.Shoot();
+            Animator animator = players[id].GetComponent<Animator>();
+            //animator.SetBool("Shoot_b", true);
+        }
+        else if(id == 1)
+        {
+            //Animator animator = players[id].GetComponent<Animator>();
+            //animator.SetBool("Shoot_b", false);
+        }
         var action = new Actions(
             id,
             inputIndex, 
-            Input.GetKeyDown(KeyCode.Space), 
-            Input.GetKeyDown(KeyCode.LeftArrow), 
-            Input.GetKeyDown(KeyCode.RightArrow)
+            Input.GetKey(KeyCode.Space), 
+            Input.GetKey(KeyCode.A), 
+            Input.GetKey(KeyCode.D),
+            Input.GetKey(KeyCode.W),
+            Input.GetKey(KeyCode.S),
+            players[id].transform.eulerAngles,
+            hitPlayerId
         );
-
+        queuedActions.Add(action);
         clientActions.Add(action);
         
         var packet = Packet.Obtain();
@@ -195,8 +273,64 @@ public class MyClient {
             currentAction.SerializeInput(packet.buffer);
         }
         packet.buffer.Flush();
+        queuedInputs.Add(packet);
+    }
 
-        SendReliablePacket(packet, 2f);
+    private int CheckForHits()
+    {        
+        // Bit shift the index of the layer (8) to get a bit mask
+        int layerMask = 1 << 8;
+
+        // This would cast rays only against colliders in layer 8.
+        // But instead we want to collide against everything except layer 8. The ~ operator does this, it inverts a bitmask.
+        layerMask = ~layerMask;
+
+        RaycastHit hit;
+        Transform transform = players[id].transform;
+        
+        Vector3 positionWithOffset = transform.position + new Vector3(0f,2.1f,0f);
+        Vector3 directionWithOffset = Vector3.forward - new Vector3(0f,0.05f,0f);
+        // Does the ray intersect any objects excluding the player layer
+        if (Physics.Raycast(positionWithOffset, transform.TransformDirection(directionWithOffset), out hit, Mathf.Infinity, layerMask))
+        {
+            Debug.DrawRay(positionWithOffset, transform.TransformDirection(directionWithOffset) * hit.distance, Color.yellow);
+            Debug.Log("Did Hit " + hit.collider.gameObject.name );
+            int number;
+            if (Int32.TryParse(hit.collider.gameObject.name, out number))
+                return number;
+            return -1;
+        }
+        return -1;
+    }
+
+    private void ApplyClientInput(Actions action, CharacterController controller)
+    {
+        Vector3 direction = new Vector3();
+        
+        if (action.jump && controller.isGrounded)
+        {
+            direction = players[id].transform.up;
+            controller.Move(direction * (speed * 10 * Time.fixedDeltaTime)); 
+        }
+        if (action.left) {
+            direction = -players[id].transform.right;
+            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+        }
+        if (action.right) {
+            direction = players[id].transform.right;
+            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+        }
+        if (action.up) {
+            direction = players[id].transform.forward;
+            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+        }
+        if (action.down) {
+            direction = -players[id].transform.forward;
+            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+        }
+
+        direction.y -= gravity * Time.fixedDeltaTime;
+        controller.Move(direction * Time.fixedDeltaTime);
     }
     
     private void ResendIfExpired()
@@ -205,7 +339,7 @@ public class MyClient {
         {
             if(packetsToSend[i].CheckIfExpired(packetsTime))
             {
-                Debug.Log("Resending packet " + packetsToSend[i].packetIndex + "...");
+                Debug.Log("Resending packet " + packetsToSend[i].packetIndex + " id " + packetsToSend[i].id);
                 Resend(i);
             }
         }
@@ -225,11 +359,11 @@ public class MyClient {
         }
         if(toRemove != -1)
         {
-            packetsToSend.RemoveAt(toRemove);
+            packetsToSend.RemoveRange(0, toRemove);
         }
     }
     
-    private void GetServerACK(Packet packet) {
+    private void GetServerAck(Packet packet) {
         int packetNumber = packet.buffer.GetInt();
         int quantity = packetNumber - lastRemoved;
         lastRemoved = packetNumber;
@@ -246,23 +380,88 @@ public class MyClient {
         var previousTime = (interpolationBuffer[0]).packetNumber * (1f/pps);
         var nextTime =  interpolationBuffer[1].packetNumber * (1f/pps);
         var t =  (clientTime - previousTime) / (nextTime - previousTime); 
-        Snapshot.CreateInterpolatedAndApply(interpolationBuffer[0], interpolationBuffer[1], players, t);
-
+        Snapshot.CreateInterpolatedAndApply(interpolationBuffer[0], interpolationBuffer[1], players, t, id);
+        
         if(clientTime > nextTime) {
             interpolationBuffer.RemoveAt(0);
         }
     }
-    
-    public void SpawnPlayer(int playerId, CubeEntity playerCube)
+
+    private void Reconciliation()
     {
-        Vector3 position = playerCube.position;
-        Quaternion rotation = Quaternion.Euler(playerCube.eulerAngles);
-        GameObject player = GameObject.Instantiate(playerPrefab, position, rotation) as GameObject;
+        Snapshot snapshot = interpolationBuffer[interpolationBuffer.Count - 1];
+        ClientEntity playerEntity = snapshot.worldInfo.players[id];
+        PlayerInfoUpdate(snapshot.worldInfo.playersInfo[id]);
+        GameObject gameObject = new GameObject();
+        gameObject.AddComponent<Rigidbody>();
+        gameObject.transform.position = playerEntity.position;
+        gameObject.transform.eulerAngles = playerEntity.eulerAngles;
+
+        for (int i = snapshot.packetNumber + 1; i < clientActions.Count; i++)
+        {
+            ApplyClientInput(clientActions[i], gameObject.GetComponent<CharacterController>());
+        }
+        
+        if (Vector3.Distance(gameObject.transform.position, players[id].transform.position) >= epsilon) 
+        {
+            Debug.Log("Had to reconcile");
+            players[id].transform.position = gameObject.transform.position;
+        }
+
+        GameObject.Destroy(gameObject);
+    }
+    
+    private void PlayerInfoUpdate(ClientInfo clientInfo)
+    {
+        Text text = GameObject.Find("HealthText").GetComponent<Text>();
+        if (clientInfo.life < 20)
+        {
+            text.text = "<color=red>" + clientInfo.life + "</color>";
+        }
+        else if (clientInfo.life < 60)
+        {
+            text.text = "<color=orange>" + clientInfo.life + "</color>";
+        }
+        else
+        {
+            text.text = clientInfo.life.ToString();
+        }
+    }
+
+    private void SpawnPlayer(int playerId, ClientEntity playerEntity)
+    {
+        Vector3 position = playerEntity.position;
+        Quaternion rotation = Quaternion.Euler(playerEntity.eulerAngles);
+        GameObject player; 
+        if (playerId == id)
+        {
+            Debug.Log("In own");
+            player = GameObject.Instantiate(playerPrefab, position, rotation);
+            playerUIInstance = GameObject.Instantiate(playerUIPrefab);
+        }
+        else
+        {
+            player = GameObject.Instantiate(otherPlayerPrefab, position, rotation);
+
+        }
         players.Add(playerId, player);
+        player.name = playerId.ToString();
+        Debug.Log("Setting camera to player with id " + playerId);
     }
 
     public Channel GetChannel()
     {
         return channel;
+    }
+
+    private void DeathEvent(int killedId, int sourceId)
+    {
+        if (sourceId == id)
+        {
+            Text points = GameObject.Find("KillText").GetComponent<Text>();
+            points.text = (Int32.Parse(points.text) + 1).ToString();
+        }
+        Killfeed killfeed = GameObject.Find("Killfeed").GetComponent<Killfeed>();
+        killfeed.OnKill(killedId,sourceId);
     }
 }
