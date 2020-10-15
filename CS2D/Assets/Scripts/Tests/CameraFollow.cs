@@ -42,7 +42,7 @@
      {
          float _yRot = Input.GetAxis("Mouse X");
          
-         Vector3 _rotation = new Vector3(0f, _yRot, 0f) * mouseSensitivity * Time.fixedDeltaTime;
+         Vector3 _rotation = new Vector3(0f, _yRot, 0f) * (mouseSensitivity * Time.fixedDeltaTime);
 
          playerTransform.Rotate(_rotation);
 
@@ -50,7 +50,7 @@
          _xRot = -_xRot;
          _xRot = Mathf.Clamp(_xRot, -90f, 90f);
          
-         Vector3 _cameraRotation = new Vector3(_xRot, 0f, 0f) * mouseSensitivity * Time.fixedDeltaTime;
+         Vector3 _cameraRotation = new Vector3(_xRot, 0f, 0f) * (mouseSensitivity * Time.fixedDeltaTime);
          if (camera != null)
          {
              camera.transform.Rotate(_cameraRotation);
