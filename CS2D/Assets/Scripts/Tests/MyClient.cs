@@ -137,7 +137,8 @@ public class MyClient {
                 case (int) PacketType.KILLFEED_EVENT:
                     int killedId = packet.buffer.GetInt();
                     int sourceId = packet.buffer.GetInt();
-                    DeathEvent(killedId, sourceId);
+                    if(id == 1)
+                        DeathEvent(killedId, sourceId);
                     break;
                 default:
                     Debug.Log("Unrecognized type in client" + packetType);
@@ -309,23 +310,23 @@ public class MyClient {
         
         if (action.jump && controller.isGrounded)
         {
-            direction = players[id].transform.up;
+            direction = controller.transform.up;
             controller.Move(direction * (speed * 10 * Time.fixedDeltaTime)); 
         }
         if (action.left) {
-            direction = -players[id].transform.right;
+            direction = -controller.transform.right;
             controller.Move(direction * (speed * Time.fixedDeltaTime)); 
         }
         if (action.right) {
-            direction = players[id].transform.right;
+            direction = controller.transform.right;
             controller.Move(direction * (speed * Time.fixedDeltaTime)); 
         }
         if (action.up) {
-            direction = players[id].transform.forward;
+            direction = controller.transform.forward;
             controller.Move(direction * (speed * Time.fixedDeltaTime)); 
         }
         if (action.down) {
-            direction = -players[id].transform.forward;
+            direction = -controller.transform.forward;
             controller.Move(direction * (speed * Time.fixedDeltaTime)); 
         }
 
