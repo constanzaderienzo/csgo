@@ -237,6 +237,7 @@ GameObject:
   - component: {fileID: 8817517850847799484}
   - component: {fileID: 3978311304402519711}
   - component: {fileID: 8663202075448236518}
+  - component: {fileID: 5311639692589684257}
   m_Layer: 5
   m_Name: Killfeed
   m_TagString: Untagged
@@ -260,8 +261,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 533.68, y: 158.5}
-  m_SizeDelta: {x: -1078.77, y: -330.1}
+  m_AnchoredPosition: {x: 484.6, y: 171.7}
+  m_SizeDelta: {x: -980.6, y: -356.5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8817517850847799484
 CanvasRenderer:
@@ -313,6 +314,31 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   killFeedItemPrefab: {fileID: 4127303916465613228, guid: 5c82f39e39dd77c4fa8a2ff7c4c6c9bc,
     type: 3}
+--- !u!114 &5311639692589684257
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2649235500949815467}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Padding:
+    m_Left: 0
+    m_Right: 0
+    m_Top: 0
+    m_Bottom: 0
+  m_ChildAlignment: 1
+  m_Spacing: 0
+  m_ChildForceExpandWidth: 1
+  m_ChildForceExpandHeight: 1
+  m_ChildControlWidth: 0
+  m_ChildControlHeight: 0
+  m_ChildScaleWidth: 0
+  m_ChildScaleHeight: 0
 --- !u!1 &2661055832314146859
 GameObject:
   m_ObjectHideFlags: 0

@@ -73,8 +73,8 @@ MonoBehaviour:
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
-    m_HorizontalOverflow: 0
-    m_VerticalOverflow: 0
+    m_HorizontalOverflow: 1
+    m_VerticalOverflow: 1
     m_LineSpacing: 1
   m_Text: <b>Player</b> 1 killed Player 2
 --- !u!1 &4127303916465613228
@@ -89,6 +89,7 @@ GameObject:
   - component: {fileID: 2945366750968534238}
   - component: {fileID: 2545959207137283097}
   - component: {fileID: 8042033410045447306}
+  - component: {fileID: 5552168112960345918}
   m_Layer: 5
   m_Name: KillfeedItem
   m_TagString: Untagged
@@ -113,8 +114,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 77.8}
-  m_SizeDelta: {x: 0, y: -155.7}
+  m_AnchoredPosition: {x: -0.025024414, y: 0}
+  m_SizeDelta: {x: -0.049927, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2945366750968534238
 CanvasRenderer:
@@ -123,7 +124,7 @@ CanvasRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4127303916465613228}
-  m_CullTransparentMesh: 0
+  m_CullTransparentMesh: 1
 --- !u!114 &2545959207137283097
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -165,3 +166,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   text: {fileID: 4594657707765648317}
+--- !u!114 &5552168112960345918
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4127303916465613228}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: -1
+  m_PreferredHeight: 35
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
