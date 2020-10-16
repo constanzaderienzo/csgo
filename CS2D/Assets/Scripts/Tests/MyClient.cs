@@ -263,6 +263,8 @@ public class MyClient {
             players[id].transform.eulerAngles,
             hitPlayerId
         );
+
+        SeeIfItsColliding();
         queuedActions.Add(action);
         clientActions.Add(action);
         
@@ -275,6 +277,11 @@ public class MyClient {
         }
         packet.buffer.Flush();
         queuedInputs.Add(packet);
+    }
+
+    private void SeeIfItsColliding()
+    {
+        //throw new NotImplementedException();
     }
 
     private int CheckForHits()
@@ -368,8 +375,10 @@ public class MyClient {
         int packetNumber = packet.buffer.GetInt();
         int quantity = packetNumber - lastRemoved;
         lastRemoved = packetNumber;
+        //Debug.Log("Got packet " + packetNumber);
         while (quantity > 0) 
         {
+            //Debug.Log("Removing action with id " + clientActions[0]);
             clientActions.RemoveAt(0);
             quantity--;
         }
@@ -396,10 +405,13 @@ public class MyClient {
         PlayerInfoUpdate(playerInfo);
         GameObject gameObject = new GameObject();
         gameObject.AddComponent<CharacterController>();
+        gameObject.GetComponent<CharacterController>().center = new Vector3(0f, 1.5f, 0f);
+        gameObject.GetComponent<CharacterController>().height = 3f;
         gameObject.transform.position = playerEntity.position;
         gameObject.transform.eulerAngles = playerEntity.eulerAngles;
-    
-        for (int i = playerInfo.inputId + 1; i < clientActions.Count; i++)
+        gameObject.layer = 8; 
+        
+        for (int i = 0; i < clientActions.Count; i++)
         {
             ApplyClientInput(clientActions[i], gameObject.GetComponent<CharacterController>());
         }
@@ -436,6 +448,7 @@ public class MyClient {
     private void SpawnPlayer(int playerId, ClientEntity playerEntity)
     {
         Vector3 position = playerEntity.position;
+        Debug.Log("Spawning  player at " + playerEntity.position.y);
         Quaternion rotation = Quaternion.Euler(playerEntity.eulerAngles);
         GameObject player; 
         if (playerId == id)

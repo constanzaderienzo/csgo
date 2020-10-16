@@ -13,7 +13,7 @@ public class ClientInfo
     {
         this.id = id;
         ipEndPoint = endPoint;
-        inputId = 0;
+        inputId = 1;
         life = 100f;
         isDead = false;
     }

@@ -276,7 +276,7 @@ public class MyServer {
     private void AddPlayerToWorld(int clientId)
     {
         float xPosition = Random.Range(-4f, 4f);
-        float yPosition = 1f;
+        float yPosition = 0f;
         float zPosition = Random.Range(-4f, 4f);
         Vector3 position = new Vector3(xPosition, yPosition, zPosition);
         Quaternion rotation = Quaternion.Euler(Vector3.zero);
