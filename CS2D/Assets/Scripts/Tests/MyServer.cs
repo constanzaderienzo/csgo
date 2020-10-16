@@ -140,7 +140,6 @@ public class MyServer {
             clientId = action.id;
             client = clients[clientId];
             if(action.inputIndex > client.inputId) {
-                // mover el cubo
                 client.inputId = action.inputIndex;
                 queuedClientInputs.Add(action, clientsGameObjects[action.id]); 
             }
@@ -161,6 +160,8 @@ public class MyServer {
     {
         CharacterController controller = player.GetComponent<CharacterController>();
         Vector3 direction = new Vector3();
+        player.transform.eulerAngles = new Vector3(action.rotationX, action.rotationY, action.rotationZ);
+
         if (action.jump && controller.isGrounded)
         {
             direction = player.transform.up;
@@ -193,7 +194,6 @@ public class MyServer {
 
         direction.y -= gravity * Time.fixedDeltaTime;
         controller.Move(direction * Time.fixedDeltaTime);
-        player.transform.eulerAngles = new Vector3(action.rotationX, action.rotationY, action.rotationZ);
         
         if(action.hitPlayerId != -1)
             ApplyHit(action.hitPlayerId, action.id);

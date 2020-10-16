@@ -398,16 +398,19 @@ public class MyClient {
         gameObject.AddComponent<CharacterController>();
         gameObject.transform.position = playerEntity.position;
         gameObject.transform.eulerAngles = playerEntity.eulerAngles;
-
+    
         for (int i = playerInfo.inputId + 1; i < clientActions.Count; i++)
         {
             ApplyClientInput(clientActions[i], gameObject.GetComponent<CharacterController>());
         }
-        
-        if (Vector3.Distance(gameObject.transform.position, players[id].transform.position) >= epsilon) 
+
+        var calculatedPosition = gameObject.GetComponent<CharacterController>().transform.position;
+        var actualPosition = players[id].GetComponent<CharacterController>().transform.position;
+        //Debug.Log("Actual " + actualPosition + " calculated " + calculatedPosition);
+        if (Vector3.Distance(calculatedPosition, actualPosition) >= epsilon) 
         {
             Debug.Log("Had to reconcile");
-            players[id].transform.position = gameObject.transform.position;
+            players[id].GetComponent<CharacterController>().transform.position = gameObject.GetComponent<CharacterController>().transform.position;
         }
 
         GameObject.Destroy(gameObject);
@@ -448,7 +451,6 @@ public class MyClient {
         }
         players.Add(playerId, player);
         player.name = playerId.ToString();
-        Debug.Log("Setting camera to player with id " + playerId);
     }
 
     public Channel GetChannel()
