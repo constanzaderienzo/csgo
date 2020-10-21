@@ -38,7 +38,8 @@ public class Snapshot
         foreach (var playerId in previous.worldInfo.players.Keys)
         {
             bool isDead = previous.worldInfo.playersInfo[playerId].isDead;
-            if (isDead)
+            bool disconnected = previous.worldInfo.playersInfo[playerId].disconnected;
+            if (isDead || disconnected)
             {
                 gameObjects[playerId].SetActive(false);
             }

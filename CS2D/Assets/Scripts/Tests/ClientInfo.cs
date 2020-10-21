@@ -8,6 +8,7 @@ public class ClientInfo
     public float life;
     public bool isDead;
     public float timeToRespawn;
+    public bool disconnected;
 
     public ClientInfo(int id, IPEndPoint endPoint)
     {
@@ -16,6 +17,7 @@ public class ClientInfo
         inputId = 1;
         life = 100f;
         isDead = false;
+        disconnected = false;
     }
 
     public ClientInfo(ClientInfo clientInfo)
@@ -23,6 +25,7 @@ public class ClientInfo
         inputId = clientInfo.inputId;
         life = clientInfo.life;
         isDead = clientInfo.isDead;
+        disconnected = clientInfo.disconnected;
     }
     public ClientInfo(){}
 
@@ -32,6 +35,7 @@ public class ClientInfo
         buffer.PutInt(inputId);
         buffer.PutFloat(life);
         buffer.PutBit(isDead);
+        buffer.PutBit(disconnected);
     }
 
     public static ClientInfo DeserializeInfo(BitBuffer buffer)
@@ -40,6 +44,7 @@ public class ClientInfo
         playerInfo.inputId = buffer.GetInt();
         playerInfo.life = buffer.GetFloat();
         playerInfo.isDead = buffer.GetBit();
+        playerInfo.disconnected = buffer.GetBit();
         return playerInfo;
     }
 }

@@ -5,16 +5,9 @@ using System.Net;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-public class MyServer {
-    public enum PacketType
-    {
-        SNAPSHOT    = 0,
-        INPUT       = 1,
-        ACK         = 2,
-        PLAYER_JOINED_GAME   = 3,
-        NEW_PLAYER_BROADCAST  = 4,
-        KILLFEED_EVENT = 5
-    }
+public class MyServer : MonoBehaviour {
+
+    [SerializeField]
     private GameObject serverPrefab;
     private Channel channel;
     private float accum = 0f;
@@ -28,11 +21,11 @@ public class MyServer {
     private List<NewPlayerBroadcastEvent> newPlayerBroadcastEvents;
     private Dictionary<Actions, GameObject> queuedClientInputs;
     private float timeToRespawn = 200f;
-
-    public MyServer(GameObject serverPrefab, Channel channel, int pps) {
-        this.serverPrefab = serverPrefab;
-        this.channel = channel;
-        this.pps = pps;
+    
+    private void Awake()
+    {
+        channel = new Channel(9000);
+        pps = 60;
         clientsGameObjects = new Dictionary<int, GameObject>();
         clients = new Dictionary<int, ClientInfo>();
         newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
@@ -93,7 +86,7 @@ public class MyServer {
         queuedClientInputs = new Dictionary<Actions, GameObject>();
     }
 
-    public void UpdateServer() {
+    public void Update() {
         accum += Time.deltaTime;    
         serverTime += Time.deltaTime;
         ProcessPacket();
@@ -121,6 +114,12 @@ public class MyServer {
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
                     ClientReceivedNewPlayerBroadcast(packet);
                     break;
+                case (int) PacketType.PLAYER_DISCONNECT:
+                    PlayerDisconnected(packet);
+                    break;
+                case (int) PacketType.HEALTH:
+                    ReplyHealthPing(packet);
+                    break;
                 default:
                     Debug.Log("Unrecognized type in server");
                     break;
@@ -128,6 +127,30 @@ public class MyServer {
             packet.Free();
             packet = channel.GetPacket();
         }
+    }
+
+    private void ReplyHealthPing(Packet packet)
+    {
+        Debug.Log("Received health ping " + packet.fromEndPoint);
+        var outPacket = Packet.Obtain();
+        outPacket.buffer.PutInt((int) PacketType.HEALTH);
+        bool validUsername;
+        int clientId = packet.buffer.GetInt();
+        if (clients.ContainsKey(clientId))
+            validUsername = false;
+        else
+            validUsername = true;
+        
+        outPacket.buffer.PutBit(validUsername);
+        outPacket.buffer.Flush();
+        channel.Send(outPacket, packet.fromEndPoint);
+    }
+
+    private void PlayerDisconnected(Packet packet)
+    {
+        int clientId = packet.buffer.GetInt();
+        clients[clientId].disconnected = true;
+        clientsGameObjects[clientId].SetActive(false);
     }
 
     private void ServerReceivesClientInput(Packet packet){
@@ -216,14 +239,17 @@ public class MyServer {
     {
         foreach (var id in clients.Keys)
         {
-            IPEndPoint clientEndpoint = clients[id].ipEndPoint;
-            var packet = Packet.Obtain();
-            packet.buffer.PutInt((int) PacketType.KILLFEED_EVENT);
-            packet.buffer.PutInt(killedId);
-            packet.buffer.PutInt(sourceId);
-            packet.buffer.Flush();
-            //Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);
-            channel.Send(packet, clientEndpoint);
+            if (!clients[id].disconnected)
+            {
+                IPEndPoint clientEndpoint = clients[id].ipEndPoint;
+                var packet = Packet.Obtain();
+                packet.buffer.PutInt((int) PacketType.KILLFEED_EVENT);
+                packet.buffer.PutInt(killedId);
+                packet.buffer.PutInt(sourceId);
+                packet.buffer.Flush();
+                //Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);
+                channel.Send(packet, clientEndpoint);
+            }
         }
     }
 
@@ -232,7 +258,7 @@ public class MyServer {
         WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
         foreach (var clientId in clients.Keys)
         {
-            if (clientId == 1)
+            if (!clients[clientId].disconnected) 
             {
                 //serialize
                 var packet = Packet.Obtain();
@@ -266,10 +292,9 @@ public class MyServer {
         int clientId = packet.buffer.GetInt();
         IPEndPoint endPoint = packet.fromEndPoint;
         //Debug.Log("Client with id " + clientId + " and endpoint " + endPoint.Address + endPoint.Port + " was added");
-        var last = clients.Keys.Count + 1;
         ClientInfo clientInfo = new ClientInfo(clientId, endPoint);
-        clients.Add(last, clientInfo);
-        SendAck(last, endPoint, (int)PacketType.PLAYER_JOINED_GAME);
+        clients[clientId] = clientInfo;
+        SendAck(clientId, endPoint, (int)PacketType.PLAYER_JOINED_GAME_ACK);
         AddPlayerToWorld(clientId);
     }
 
@@ -280,7 +305,7 @@ public class MyServer {
         float zPosition = Random.Range(-4f, 4f);
         Vector3 position = new Vector3(xPosition, yPosition, zPosition);
         Quaternion rotation = Quaternion.Euler(Vector3.zero);
-        GameObject newClient = GameObject.Instantiate(serverPrefab, position, rotation);
+        GameObject newClient = Instantiate(serverPrefab, position, rotation);
         clientsGameObjects[clientId] = newClient;
         //Send Broadcast
         BroadcastNewPlayer(clientId, position, rotation.eulerAngles);
@@ -305,15 +330,18 @@ public class MyServer {
         ClientEntity newPlayer = new ClientEntity(clientsGameObjects[newPlayerId], position, rotation);
         foreach (var id in clients.Keys)
         {
-            IPEndPoint clientEndpoint = clients[id].ipEndPoint;
-            var packet = Packet.Obtain();
-            packet.buffer.PutInt((int) PacketType.NEW_PLAYER_BROADCAST);
-            NewPlayerBroadcastEvent newPlayerEvent = new NewPlayerBroadcastEvent(newPlayerId, newPlayer, serverTime, id);
-            newPlayerEvent.Serialize(packet.buffer);
-            packet.buffer.Flush();
-            //Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);
-            channel.Send(packet, clientEndpoint);
-            newPlayerBroadcastEvents.Add(newPlayerEvent);
+            if (!clients[id].disconnected)
+            {
+                IPEndPoint clientEndpoint = clients[id].ipEndPoint;
+                var packet = Packet.Obtain();
+                packet.buffer.PutInt((int) PacketType.NEW_PLAYER_BROADCAST);
+                NewPlayerBroadcastEvent newPlayerEvent = new NewPlayerBroadcastEvent(newPlayerId, newPlayer, serverTime, id);
+                newPlayerEvent.Serialize(packet.buffer);
+                packet.buffer.Flush();
+                //Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);
+                channel.Send(packet, clientEndpoint);
+                newPlayerBroadcastEvents.Add(newPlayerEvent);
+            }
         }
     }
     
@@ -334,5 +362,9 @@ public class MyServer {
 
         if (toRemove != -1)
             newPlayerBroadcastEvents.RemoveAt(toRemove);
+    }
+    
+    private void OnDestroy() {
+        channel.Disconnect();
     }
 }

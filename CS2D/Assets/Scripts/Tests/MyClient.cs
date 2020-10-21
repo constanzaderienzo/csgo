@@ -3,39 +3,36 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-public class MyClient {
-
-    public enum PacketType
-    {
-        SNAPSHOT    = 0,
-        INPUT       = 1,
-        ACK         = 2,
-        PLAYER_JOINED_GAME   = 3,
-        NEW_PLAYER_BROADCAST  = 4,
-        KILLFEED_EVENT = 5
-    }
-    private readonly GameObject playerPrefab;
-    private readonly GameObject otherPlayerPrefab;
+public class MyClient : MonoBehaviour{
+    
+    [SerializeField]
+    private GameObject playerPrefab;
+    [SerializeField]
+    private GameObject otherPlayerPrefab;
     private readonly GameObject conciliateGameObject;
-    private readonly GameObject playerUIPrefab;
+    [SerializeField]
+    private GameObject playerUIPrefab;
     private GameObject playerUIInstance;
-    private readonly Channel channel;
-    private readonly IPEndPoint serverEndpoint;
-    private readonly List<Snapshot> interpolationBuffer;
+    private Channel channel;
+    private IPEndPoint serverEndpoint;
+    private List<Snapshot> interpolationBuffer;
     private readonly int requiredSnapshots = 3;
+    private float time;
     private bool clientPlaying = false;
     private bool hasReceievedAck = false;
     private float clientTime = 0f;
     private float packetsTime = 0f;
-    private readonly int pps;
-    private readonly List<Actions> clientActions;
+    private readonly int pps = 60;
+    private List<Actions> clientActions;
     private readonly Dictionary<int, Actions> appliedActions;
-    private readonly List<ReliablePacket> packetsToSend;
+    private List<ReliablePacket> packetsToSend;
+    private ReliablePacket sentJoinEvent;
     private List<Packet> queuedInputs;
     private int inputIndex;    
-    private readonly Dictionary<int, GameObject> players;
+    private Dictionary<int, GameObject> players;
     public int id;
     private int lastRemoved;
     private readonly float speed = 10.0f;
@@ -43,26 +40,56 @@ public class MyClient {
     private float epsilon;
     private List<Actions> queuedActions;
     private PlayerShoot playerShoot;
+    public GameObject exitPanel;
+    private bool paused;
 
 
-    public MyClient(GameObject playerPrefab, GameObject otherPlayerClientPrefab, GameObject playerUIPrefab, Channel channel,
-        IPEndPoint serverEndpoint, int pps, int id) {
-        this.playerPrefab = playerPrefab;
-        otherPlayerPrefab = otherPlayerClientPrefab;
-        this.playerUIPrefab = playerUIPrefab;
-        this.channel = channel;
-        this.serverEndpoint = serverEndpoint;
-        this.pps = pps;
-        this.id = id;
+    private void Awake()
+    {
+        Debug.Log("Awaking");
         epsilon = 0.5f;
         players = new Dictionary<int, GameObject>();
         inputIndex = 0;
         lastRemoved = 0;
+        paused = false; 
         clientActions = new List<Actions>();
         interpolationBuffer = new List<Snapshot>();
         packetsToSend = new List<ReliablePacket>();
         queuedInputs = new List<Packet>();
         queuedActions = new List<Actions>();
+        channel = new Channel(9001);
+        serverEndpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9000);
+    }
+
+    private void Start()
+    {
+        JoinGameLoad joinGameLoad = GameObject.Find("NetworkManager").GetComponent<JoinGameLoad>();
+        //SetId(joinGameLoad.id);
+        //SetServerEndpoint(joinGameLoad.roomName);
+        SendJoinToServer(id);
+    }
+
+    private void SendJoinToServer(int newPlayerId)
+    {
+        Packet packet = Packet.Obtain();
+        packet.buffer.PutInt((int) PacketType.PLAYER_JOINED_GAME);
+        // In this case packet index is playerId
+        packet.buffer.PutInt(newPlayerId);
+        packet.buffer.Flush();
+        sentJoinEvent = new ReliablePacket(packet, newPlayerId, 1f, time, -1); 
+        channel.Send(packet, serverEndpoint);
+        packet.Free();
+    }
+    
+    public void SetId(int id)
+    {
+        Debug.Log("Setting id " + id);
+        this.id = id;
+    }
+
+    public void SetServerEndpoint(string address)
+    {
+        serverEndpoint = new IPEndPoint(IPAddress.Parse(address), 9000);
     }
 
     public void FixedUpdate()
@@ -93,16 +120,35 @@ public class MyClient {
         queuedInputs.RemoveRange(0, queuedInputs.Count);
     }
 
-    public void UpdateClient() 
+    public void Update()
     {
-        
-        if (hasReceievedAck)
+        time += Time.deltaTime;
+        ResendPlayerJoinedIfExpired();
+        if (hasReceievedAck) 
         {
             packetsTime += Time.deltaTime;
             SendClientInput();
             ResendIfExpired();         
         }
-        
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            paused = !paused;
+            
+            if (paused)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                exitPanel.SetActive(true);
+            }
+            else
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                exitPanel.SetActive(false);
+
+            }
+
+        }
+            
         ProcessPacket();
 
     }
@@ -121,6 +167,10 @@ public class MyClient {
                     break;
                 case (int) PacketType.ACK:
                     GetServerAck(packet);
+                    break;
+                case (int) PacketType.PLAYER_JOINED_GAME_ACK:
+                    sentJoinEvent = null;
+                    //TODO remove in prod
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
                     //TODO remove in prod
@@ -230,6 +280,17 @@ public class MyClient {
         packetsToSend[index].sentTime = clientTime;
     }
     
+    private void ResendPlayerJoinedIfExpired()
+    {
+        if (sentJoinEvent != null && sentJoinEvent.CheckIfExpired(time))
+        {
+            Debug.Log("Resending");
+            channel.Send(sentJoinEvent.packet, serverEndpoint);
+            sentJoinEvent.sentTime = time;
+        }
+        
+    }
+    
     private void SendUnreliablePacket(Packet packet)
     {
         channel.Send(packet, serverEndpoint);
@@ -240,18 +301,14 @@ public class MyClient {
     {
         inputIndex += 1;
         int hitPlayerId = -1;
-        if (Input.GetMouseButtonDown(0) && id == 1)
+        if (Input.GetMouseButtonDown(0) && !paused)
         {
             //hitPlayerId = CheckForHits();
             hitPlayerId = playerShoot.Shoot();
             Animator animator = players[id].GetComponent<Animator>();
             //animator.SetBool("Shoot_b", true);
         }
-        else if(id == 1)
-        {
-            //Animator animator = players[id].GetComponent<Animator>();
-            //animator.SetBool("Shoot_b", false);
-        }
+        
         var action = new Actions(
             id,
             inputIndex, 
@@ -264,7 +321,6 @@ public class MyClient {
             hitPlayerId
         );
 
-        SeeIfItsColliding();
         queuedActions.Add(action);
         clientActions.Add(action);
         
@@ -278,39 +334,7 @@ public class MyClient {
         packet.buffer.Flush();
         queuedInputs.Add(packet);
     }
-
-    private void SeeIfItsColliding()
-    {
-        //throw new NotImplementedException();
-    }
-
-    private int CheckForHits()
-    {        
-        // Bit shift the index of the layer (8) to get a bit mask
-        int layerMask = 1 << 8;
-
-        // This would cast rays only against colliders in layer 8.
-        // But instead we want to collide against everything except layer 8. The ~ operator does this, it inverts a bitmask.
-        layerMask = ~layerMask;
-
-        RaycastHit hit;
-        Transform transform = players[id].transform;
-        
-        Vector3 positionWithOffset = transform.position + new Vector3(0f,2.1f,0f);
-        Vector3 directionWithOffset = Vector3.forward - new Vector3(0f,0.05f,0f);
-        // Does the ray intersect any objects excluding the player layer
-        if (Physics.Raycast(positionWithOffset, transform.TransformDirection(directionWithOffset), out hit, Mathf.Infinity, layerMask))
-        {
-            Debug.DrawRay(positionWithOffset, transform.TransformDirection(directionWithOffset) * hit.distance, Color.yellow);
-            Debug.Log("Did Hit " + hit.collider.gameObject.name );
-            int number;
-            if (Int32.TryParse(hit.collider.gameObject.name, out number))
-                return number;
-            return -1;
-        }
-        return -1;
-    }
-
+    
     private void ApplyClientInput(Actions action, CharacterController controller)
     {
         Vector3 direction = new Vector3();
@@ -425,7 +449,7 @@ public class MyClient {
             players[id].GetComponent<CharacterController>().transform.position = gameObject.GetComponent<CharacterController>().transform.position;
         }
 
-        GameObject.Destroy(gameObject);
+        Destroy(gameObject);
     }
     
     private void PlayerInfoUpdate(ClientInfo clientInfo)
@@ -454,21 +478,15 @@ public class MyClient {
         if (playerId == id)
         {
             Debug.Log("In own");
-            player = GameObject.Instantiate(playerPrefab, position, rotation);
-            playerUIInstance = GameObject.Instantiate(playerUIPrefab);
+            player = Instantiate(playerPrefab, position, rotation);
         }
         else
         {
-            player = GameObject.Instantiate(otherPlayerPrefab, position, rotation);
+            player = Instantiate(otherPlayerPrefab, position, rotation);
 
         }
         players.Add(playerId, player);
         player.name = playerId.ToString();
-    }
-
-    public Channel GetChannel()
-    {
-        return channel;
     }
 
     private void DeathEvent(int killedId, int sourceId)
@@ -480,5 +498,26 @@ public class MyClient {
         }
         Killfeed killfeed = GameObject.Find("Killfeed").GetComponent<Killfeed>();
         killfeed.OnKill(killedId,sourceId);
+    }
+
+    public void Disconnect()
+    {
+        Debug.Log("Disconnecting...");
+        Packet packet = Packet.Obtain();
+        packet.buffer.PutInt((int) PacketType.PLAYER_DISCONNECT);
+        // In this case packet index is playerId
+        packet.buffer.PutInt(id);
+        packet.buffer.Flush();
+        channel.Send(packet, serverEndpoint);
+        packet.Free();
+
+        
+        SceneManager.LoadScene("Lobby");
+    }
+
+    private void OnDestroy()
+    {
+        channel.Disconnect();
+        Destroy(gameObject);
     }
 }

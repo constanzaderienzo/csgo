@@ -17,7 +17,7 @@
          playerTransform = GetComponent<Transform>();
      }
 
-     void FixedUpdate()
+     void Update()
      {
         MoveView();
      }
