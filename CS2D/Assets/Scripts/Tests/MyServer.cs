@@ -273,11 +273,9 @@ public class MyServer : MonoBehaviour {
                 //packetNumber += 1;
                 clients[clientId].packetNumber += 1;
                 packet.buffer.PutInt((int) PacketType.SNAPSHOT);
-                ClientEntity playerEntity = new ClientEntity(clientsGameObjects[clientId]);
-                Snapshot currentSnapshot = new Snapshot(clients[clientId].packetNumber, playerEntity, currentWorldInfo);
+                Snapshot currentSnapshot = new Snapshot(clients[clientId].packetNumber, currentWorldInfo);
                 currentSnapshot.Serialize(packet.buffer);
                 packet.buffer.Flush();
-                //Debug.Log("Sending snapshot to client " + clientId);
                 channel.Send(packet, clients[clientId].ipEndPoint);
             }
         }  
@@ -286,6 +284,7 @@ public class MyServer : MonoBehaviour {
     private WorldInfo GenerateCurrentWorldInfo()
      {
         WorldInfo currentWorldInfo = new WorldInfo();
+        
         foreach (var clientId in clientsGameObjects.Keys)
         {
             ClientEntity clientEntity = new ClientEntity(clientsGameObjects[clientId]);
@@ -327,8 +326,7 @@ public class MyServer : MonoBehaviour {
     private void SendWorldStatusToNewPlayer(int clientId)
     {
         WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
-        ClientEntity playerEntity = new ClientEntity(clientsGameObjects[clientId]);
-        Snapshot currentSnapshot = new Snapshot(1, playerEntity, currentWorldInfo);
+        Snapshot currentSnapshot = new Snapshot(1, currentWorldInfo);
         
         var packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.PLAYER_JOINED_GAME);

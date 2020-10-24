@@ -39,12 +39,14 @@ public class ClientEntity
         ClientEntity newPlayer = new ClientEntity();
         newPlayer.position = new Vector3();
         newPlayer.eulerAngles = new Vector3();
+        
         newPlayer.position.x = buffer.GetFloat();
         newPlayer.position.y = buffer.GetFloat();
         newPlayer.position.z = buffer.GetFloat();
         newPlayer.eulerAngles.x = buffer.GetFloat();
         newPlayer.eulerAngles.y = buffer.GetFloat();
         newPlayer.eulerAngles.z = buffer.GetFloat();
+        
         return newPlayer;
     }
 
@@ -60,8 +62,6 @@ public class ClientEntity
     }
 
     public static void CreateInterpolatedAndApply(ClientEntity previous, ClientEntity next, GameObject gameObject, float t) {
-        Debug.Log("Interpolating " + previous.position + next.position);
-
         var cubeEntity = new ClientEntity(gameObject);
         cubeEntity.position = Vector3.Lerp(previous.position, next.position, t);
         cubeEntity.eulerAngles = Vector3.Lerp(previous.eulerAngles, next.eulerAngles, t);

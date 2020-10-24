@@ -23,8 +23,7 @@ public class NewPlayerBroadcastEvent
     {
         int playerId = buffer.GetInt();
         float time = buffer.GetFloat();
-        ClientEntity player = new ClientEntity();
-        player.Deserialize(buffer);
+        ClientEntity player = ClientEntity.DeserializeInfo(buffer);
         return new NewPlayerBroadcastEvent(playerId, player, time, -1);
     }
 }

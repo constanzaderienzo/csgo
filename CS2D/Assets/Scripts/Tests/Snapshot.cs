@@ -5,7 +5,6 @@ using UnityEngine;
 public class Snapshot 
 {
     public int packetNumber;
-    public ClientEntity playerEntity;
     public WorldInfo worldInfo;
 
     public Snapshot(int packetNumber, WorldInfo worldInfo) {
@@ -13,14 +12,9 @@ public class Snapshot
         this.worldInfo = worldInfo;
     }
 
-    public Snapshot(int packetNumber, ClientEntity playerEntity, WorldInfo worldInfo) {
-        this.packetNumber = packetNumber;
-        this.playerEntity = playerEntity;
-        this.worldInfo = worldInfo;
-    }
-    public Snapshot(ClientEntity playerEntity) {
+    public Snapshot() {
         this.packetNumber = -1;
-        this.playerEntity = playerEntity;
+        
     }
 
     public void Serialize(BitBuffer buffer) {
@@ -34,7 +28,7 @@ public class Snapshot
     }
 
     public static void CreateInterpolatedAndApply(Snapshot previous, Snapshot next, Dictionary<int, GameObject> gameObjects, float t, int id) {
-
+        
         foreach (var playerId in previous.worldInfo.players.Keys)
         {
             

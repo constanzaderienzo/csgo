@@ -212,8 +212,7 @@ public class MyClient : MonoBehaviour{
 
     private void GetSnapshot(Packet packet)
     {
-        ClientEntity playerEntity = new ClientEntity(players[id]);
-        Snapshot snapshot = new Snapshot(playerEntity);
+        Snapshot snapshot = new Snapshot();
         snapshot.Deserialize(packet.buffer);
         int size = interpolationBuffer.Count;
         if(size == 0 || snapshot.packetNumber > interpolationBuffer[size - 1].packetNumber) {
@@ -234,7 +233,6 @@ public class MyClient : MonoBehaviour{
     
     private void AddClient(int playerId, ClientEntity playerEntity) 
     {
-        //Debug.Log("Player " + id + "received broadcast for player " + playerId);
         if (!players.ContainsKey(playerId))
         {
             SpawnPlayer(playerId, playerEntity);
@@ -398,7 +396,7 @@ public class MyClient : MonoBehaviour{
         var previousTime = (interpolationBuffer[0]).packetNumber * (1f/pps);
         var nextTime =  interpolationBuffer[1].packetNumber * (1f/pps);
         var t =  (clientTime - previousTime) / (nextTime - previousTime); 
-        Snapshot.CreateInterpolatedAndApply(interpolationBuffer[0], interpolationBuffer[1], players, t, id);
+        Snapshot.CreateInterpolatedAndApply(interpolationBuffer[0], interpolationBuffer[1], players, t, this.id);
         
         if(clientTime > nextTime) {
             interpolationBuffer.RemoveAt(0);
@@ -468,7 +466,7 @@ public class MyClient : MonoBehaviour{
     private void SpawnPlayer(int playerId, ClientEntity playerEntity)
     {
         Vector3 position = playerEntity.position;
-        Debug.Log("Spawning  player at " + playerEntity.position.y);
+        Debug.Log("Spawning player " + playerId );
         Quaternion rotation = Quaternion.Euler(playerEntity.eulerAngles);
         GameObject player; 
         if (playerId == id)
@@ -478,11 +476,11 @@ public class MyClient : MonoBehaviour{
         }
         else
         {
+            Debug.Log("In other");
             player = Instantiate(otherPlayerPrefab, position, rotation);
 
         }
 
-        playerEntity.playerGameObject = player;
         players[playerId] = player;
         player.name = playerId.ToString();
     }

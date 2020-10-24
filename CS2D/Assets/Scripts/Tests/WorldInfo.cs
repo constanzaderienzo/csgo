@@ -18,12 +18,6 @@ public class WorldInfo
         playersInfo = clientInfos;
     }
 
-    public void addPlayer(int playerId, ClientEntity player)
-    {
-        players[playerId] = player;
-        playersInfo[playerId] = new ClientInfo(playerId, null);
-    }
-
     public void Serialize(BitBuffer buffer)
     {
         buffer.PutInt(players.Count);
@@ -37,10 +31,12 @@ public class WorldInfo
 
     public static WorldInfo Deserialize(BitBuffer buffer)
     {
-        int quantity = buffer.GetInt();
         Dictionary<int, ClientEntity> currentPlayers = new Dictionary<int, ClientEntity>();
         Dictionary<int, ClientInfo> currentPlayersInfo = new Dictionary<int, ClientInfo>();
-        for (int i = 0; i < quantity; i++)
+        
+        int playerCount = buffer.GetInt();
+        
+        for (int i = 0; i < playerCount; i++)
         {
             int playerId = buffer.GetInt();
             ClientEntity player = ClientEntity.DeserializeInfo(buffer);
