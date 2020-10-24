@@ -10,6 +10,11 @@ public class GenericPool<T> where T : GenericPoolableObject, new() {
 		return freeObjects.Count == 0 ? new T() : freeObjects.Pop();
 	}
 
+	public int GetCount()
+	{
+		return freeObjects.Count;
+	}
+	
 	public void Free(T poolObject) {
 		freeObjects.Push(poolObject);
 		poolObject.Reset();

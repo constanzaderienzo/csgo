@@ -59,7 +59,7 @@ public class MyServer : MonoBehaviour {
 
     private void RespawnPlayer(int clientId)
     {
-        Debug.Log("Respawning player");
+        //Debug.Log("Respawning player");
         clientsGameObjects[clientId].transform.position = RandomSpawnPosition();
         clientsGameObjects[clientId].SetActive(true);
         clientsGameObjects[clientId].GetComponent<CharacterController>().enabled = false;
@@ -83,13 +83,16 @@ public class MyServer : MonoBehaviour {
             ApplyClientInput(entry.Key, entry.Value);
 
         }
+        
         queuedClientInputs = new Dictionary<Actions, GameObject>();
     }
 
     public void Update() {
         accum += Time.deltaTime;    
         serverTime += Time.deltaTime;
+        
         ProcessPacket();
+        
         float sendRate = (1f/pps);
         if (accum >= sendRate) {
             SendSnapshot();
@@ -157,7 +160,9 @@ public class MyServer : MonoBehaviour {
         int actionsCount = packet.buffer.GetInt();
         int clientId = -1;
         ClientInfo client = null;
+        
         for (int i = 0; i < actionsCount; i++) {
+            
             Actions action = new Actions();
             action.DeserializeInput(packet.buffer);
             clientId = action.id;
@@ -167,11 +172,14 @@ public class MyServer : MonoBehaviour {
                 queuedClientInputs.Add(action, clientsGameObjects[action.id]); 
             }
         }
+        
         if(clientId != -1 && client != null)
             SendAck(client.inputId, clients[clientId].ipEndPoint, (int) PacketType.ACK);
     }
 
     private void SendAck(int inputIndex, IPEndPoint clientEndpoint, int ackType) {
+        if(ackType == (int) PacketType.PLAYER_JOINED_GAME_ACK)
+            Debug.Log("Sending ack ");
         var packet = Packet.Obtain();
         packet.buffer.PutInt(ackType);
         packet.buffer.PutInt(inputIndex);
@@ -262,10 +270,11 @@ public class MyServer : MonoBehaviour {
             {
                 //serialize
                 var packet = Packet.Obtain();
-                packetNumber += 1;
+                //packetNumber += 1;
+                clients[clientId].packetNumber += 1;
                 packet.buffer.PutInt((int) PacketType.SNAPSHOT);
                 ClientEntity playerEntity = new ClientEntity(clientsGameObjects[clientId]);
-                Snapshot currentSnapshot = new Snapshot(packetNumber, playerEntity, currentWorldInfo);
+                Snapshot currentSnapshot = new Snapshot(clients[clientId].packetNumber, playerEntity, currentWorldInfo);
                 currentSnapshot.Serialize(packet.buffer);
                 packet.buffer.Flush();
                 //Debug.Log("Sending snapshot to client " + clientId);
@@ -291,7 +300,7 @@ public class MyServer : MonoBehaviour {
     {
         int clientId = packet.buffer.GetInt();
         IPEndPoint endPoint = packet.fromEndPoint;
-        //Debug.Log("Client with id " + clientId + " and endpoint " + endPoint.Address + endPoint.Port + " was added");
+        Debug.Log("Client with id " + clientId + " and endpoint " + endPoint.Address + endPoint.Port + " was added");
         ClientInfo clientInfo = new ClientInfo(clientId, endPoint);
         clients[clientId] = clientInfo;
         SendAck(clientId, endPoint, (int)PacketType.PLAYER_JOINED_GAME_ACK);
@@ -307,8 +316,10 @@ public class MyServer : MonoBehaviour {
         Quaternion rotation = Quaternion.Euler(Vector3.zero);
         GameObject newClient = Instantiate(serverPrefab, position, rotation);
         clientsGameObjects[clientId] = newClient;
+       
         //Send Broadcast
         BroadcastNewPlayer(clientId, position, rotation.eulerAngles);
+        
         //Send world info so the player can do initial set up
         SendWorldStatusToNewPlayer(clientId);
     }
@@ -318,6 +329,7 @@ public class MyServer : MonoBehaviour {
         WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
         ClientEntity playerEntity = new ClientEntity(clientsGameObjects[clientId]);
         Snapshot currentSnapshot = new Snapshot(1, playerEntity, currentWorldInfo);
+        
         var packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.PLAYER_JOINED_GAME);
         currentSnapshot.Serialize(packet.buffer);

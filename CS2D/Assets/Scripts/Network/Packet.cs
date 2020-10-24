@@ -6,7 +6,7 @@ using System.Net;
 
 public class Packet : GenericPoolableObject {
 
-	private static GenericPool<Packet> pool = new GenericPool<Packet>();
+	public static GenericPool<Packet> pool = new GenericPool<Packet>();
 	private static System.Object poolLock = new System.Object();
 
 	public const int BUFFER_CAPACITY = 1024 * 1024;

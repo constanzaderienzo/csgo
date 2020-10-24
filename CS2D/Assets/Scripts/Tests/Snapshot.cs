@@ -37,6 +37,7 @@ public class Snapshot
 
         foreach (var playerId in previous.worldInfo.players.Keys)
         {
+            
             bool isDead = previous.worldInfo.playersInfo[playerId].isDead;
             bool disconnected = previous.worldInfo.playersInfo[playerId].disconnected;
             if (isDead || disconnected)

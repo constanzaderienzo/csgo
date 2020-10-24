@@ -10,6 +10,8 @@ public class ClientEntity
 
     public ClientEntity(GameObject playerGameObject) {
         this.playerGameObject = playerGameObject;
+        this.position = playerGameObject.transform.position;
+        this.eulerAngles = playerGameObject.transform.eulerAngles;
     }
     public ClientEntity(GameObject playerGameObject, Vector3 position, Vector3 eulerAngles)
     {
@@ -18,9 +20,13 @@ public class ClientEntity
         this.eulerAngles = eulerAngles;
     }
 
+    public ClientEntity()
+    {
+    }
+
     public void Serialize(BitBuffer buffer) {
         var transform = playerGameObject.transform;
-        var position = transform.position;
+        var position = playerGameObject.transform.position;
         buffer.PutFloat(position.x);
         buffer.PutFloat(position.y);
         buffer.PutFloat(position.z);
@@ -30,7 +36,7 @@ public class ClientEntity
     }
 
     public static ClientEntity DeserializeInfo(BitBuffer buffer) {
-        ClientEntity newPlayer = new ClientEntity(null);
+        ClientEntity newPlayer = new ClientEntity();
         newPlayer.position = new Vector3();
         newPlayer.eulerAngles = new Vector3();
         newPlayer.position.x = buffer.GetFloat();
@@ -54,9 +60,11 @@ public class ClientEntity
     }
 
     public static void CreateInterpolatedAndApply(ClientEntity previous, ClientEntity next, GameObject gameObject, float t) {
+        Debug.Log("Interpolating " + previous.position + next.position);
+
         var cubeEntity = new ClientEntity(gameObject);
-        cubeEntity.position += Vector3.Lerp(previous.position, next.position, t);
-        cubeEntity.eulerAngles += Vector3.Lerp(previous.eulerAngles, next.eulerAngles, t);
+        cubeEntity.position = Vector3.Lerp(previous.position, next.position, t);
+        cubeEntity.eulerAngles = Vector3.Lerp(previous.eulerAngles, next.eulerAngles, t);
         cubeEntity.Apply();
     }
 

@@ -31,7 +31,7 @@ public class JoinGameLoad : MonoBehaviour
     {
         joinAddressInput.onEndEdit.AddListener((value) => SetAddress(value));
         joinIdInput.onEndEdit.AddListener((value) => SetId(value));
-        loadChannel = new Channel(9002);
+        //loadChannel = new Channel(8999);
         sentTime = -1f;
         retries = 1;
     }
@@ -40,8 +40,8 @@ public class JoinGameLoad : MonoBehaviour
     {
         time += Time.deltaTime;
         
-        ReceiveHealthAck();
-        CheckIfExpired();
+        // ReceiveHealthAck();
+        // CheckIfExpired();
     }
 
     private void CheckIfExpired()
@@ -68,35 +68,38 @@ public class JoinGameLoad : MonoBehaviour
         Debug.Log(userId);
         int idOut;
         hasId = Int32.TryParse(userId, out idOut);
+        id = idOut;
     }
 
     public void JoinRoom()
     {
+        SceneManager.LoadScene("ClientScene");
+
         // TODO check if server exists (maybe with a test connection or health ping)
         // TODO check username 
-        IPAddress parsedAddress;
-        try
-        {
-            parsedAddress = IPAddress.Parse(address);
-            if (!string.IsNullOrEmpty(address) && hasId )
-            {
-                Debug.Log("Joining room " + address + " with room for " + roomSize + " with id " + id);
-                if (sentTime < 0f)
-                {
-                    Packet packet = Packet.Obtain();
-                    packet.buffer.PutInt((int)PacketType.HEALTH);
-                    packet.buffer.PutInt(id);
-                    packet.buffer.Flush();
-                    loadChannel.Send(packet, new IPEndPoint(parsedAddress, 9000));
-                }
-                //Todo disable button and show loading
-                sentTime = time;
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.Log("Invalid address");
-        }
+        // IPAddress parsedAddress;
+        // try
+        // {
+        //     parsedAddress = IPAddress.Parse(address);
+        //     if (!string.IsNullOrEmpty(address) && hasId )
+        //     {
+        //         Debug.Log("Joining room " + address + " with room for " + roomSize + " with id " + id);
+        //         if (sentTime < 0f)
+        //         {
+        //             Packet packet = Packet.Obtain();
+        //             packet.buffer.PutInt((int)PacketType.HEALTH);
+        //             packet.buffer.PutInt(id);
+        //             packet.buffer.Flush();
+        //             loadChannel.Send(packet, new IPEndPoint(parsedAddress, 9000));
+        //         }
+        //         //Todo disable button and show loading
+        //         sentTime = time;
+        //     }
+        // }
+        // catch (Exception e)
+        // {
+        //     Debug.Log("Invalid address");
+        // }
         
 
     }

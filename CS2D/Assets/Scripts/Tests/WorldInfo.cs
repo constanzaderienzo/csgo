@@ -54,16 +54,19 @@ public class WorldInfo
     public static Dictionary<int, GameObject> DeserializeSetUp(BitBuffer packetBuffer, GameObject otherPlayerPrefab, int id, Dictionary<int, GameObject> players)
     {
         Dictionary<int, GameObject> currentPlayers = new Dictionary<int, GameObject>();
+
         int quantity = packetBuffer.GetInt();
         for (int i = 0; i < quantity; i++)
         {
             int playerId = packetBuffer.GetInt();
             ClientEntity playerEntity = ClientEntity.DeserializeInfo(packetBuffer);
+            ClientInfo.DeserializeInfo(packetBuffer);
+
             if (playerId != id && !players.ContainsKey(playerId))
             {
                 Vector3 position = playerEntity.position;
                 Quaternion rotation = Quaternion.Euler(playerEntity.eulerAngles);
-                Debug.Log("Instantiating player " + playerId);
+                Debug.Log("Instantiating player " + playerId + " at  " + position);
                 GameObject player = GameObject.Instantiate(otherPlayerPrefab, position, rotation);
                 player.name = playerId.ToString();
                 currentPlayers.Add(playerId, player);                

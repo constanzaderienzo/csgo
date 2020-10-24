@@ -47,6 +47,9 @@ public class MyClient : MonoBehaviour{
     private void Awake()
     {
         Debug.Log("Awaking");
+        JoinGameLoad joinGameLoad = GameObject.Find("NetworkManager").GetComponent<JoinGameLoad>();
+        SetId(joinGameLoad.id);
+        //SetServerEndpoint(joinGameLoad.roomName);
         epsilon = 0.5f;
         players = new Dictionary<int, GameObject>();
         inputIndex = 0;
@@ -57,31 +60,24 @@ public class MyClient : MonoBehaviour{
         packetsToSend = new List<ReliablePacket>();
         queuedInputs = new List<Packet>();
         queuedActions = new List<Actions>();
-        channel = new Channel(9001);
+        channel = new Channel(9000 + id);
         serverEndpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9000);
+        SendJoinToServer();
     }
 
-    private void Start()
+    private void SendJoinToServer()
     {
-        JoinGameLoad joinGameLoad = GameObject.Find("NetworkManager").GetComponent<JoinGameLoad>();
-        //SetId(joinGameLoad.id);
-        //SetServerEndpoint(joinGameLoad.roomName);
-        SendJoinToServer(id);
-    }
-
-    private void SendJoinToServer(int newPlayerId)
-    {
+        Debug.Log("Sending join to server");
         Packet packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.PLAYER_JOINED_GAME);
-        // In this case packet index is playerId
-        packet.buffer.PutInt(newPlayerId);
+        packet.buffer.PutInt(id);
         packet.buffer.Flush();
-        sentJoinEvent = new ReliablePacket(packet, newPlayerId, 1f, time, -1); 
+        // In this case packetIndex is not used. 
+        sentJoinEvent = new ReliablePacket(packet, id, 1f, time, -1); 
         channel.Send(packet, serverEndpoint);
-        packet.Free();
     }
-    
-    public void SetId(int id)
+
+    private void SetId(int id)
     {
         Debug.Log("Setting id " + id);
         this.id = id;
@@ -96,8 +92,15 @@ public class MyClient : MonoBehaviour{
     {
         if (hasReceievedAck)
         {
-            ApplyClientInputs();
+            //Muestrea
+            TakeClientInput();
+            
+            //Send inputs 
             SendQueuedInputs();
+            
+            //Apply to player
+            ApplyClientInputs();
+            
         }
     }
 
@@ -110,7 +113,7 @@ public class MyClient : MonoBehaviour{
 
         queuedActions.RemoveRange(0, queuedActions.Count);
     }
-    
+
     private void SendQueuedInputs()
     {
         foreach (Packet packet in queuedInputs)
@@ -127,7 +130,6 @@ public class MyClient : MonoBehaviour{
         if (hasReceievedAck) 
         {
             packetsTime += Time.deltaTime;
-            SendClientInput();
             ResendIfExpired();         
         }
 
@@ -144,9 +146,7 @@ public class MyClient : MonoBehaviour{
             {
                 Cursor.lockState = CursorLockMode.Locked;
                 exitPanel.SetActive(false);
-
             }
-
         }
             
         ProcessPacket();
@@ -169,16 +169,12 @@ public class MyClient : MonoBehaviour{
                     GetServerAck(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME_ACK:
+                    Debug.Log("Got player joined ack");
                     sentJoinEvent = null;
-                    //TODO remove in prod
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
-                    //TODO remove in prod
-                    if (id == 1)
-                    {
-                        InitialSetUp(packet);
-                        hasReceievedAck = true;
-                    }
+                    InitialSetUp(packet);
+                    hasReceievedAck = true;
                     break;
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
                     NewPlayerBroadcastEvent newPlayer = NewPlayerBroadcastEvent.Deserialize(packet.buffer);
@@ -187,8 +183,7 @@ public class MyClient : MonoBehaviour{
                 case (int) PacketType.KILLFEED_EVENT:
                     int killedId = packet.buffer.GetInt();
                     int sourceId = packet.buffer.GetInt();
-                    if(id == 1)
-                        DeathEvent(killedId, sourceId);
+                    DeathEvent(killedId, sourceId);
                     break;
                 default:
                     Debug.Log("Unrecognized type in client" + packetType);
@@ -209,9 +204,8 @@ public class MyClient : MonoBehaviour{
         {
             if (!players.ContainsKey(player.Key))
             {
-                //Debug.Log("Adding player with id " + player.Key);
+                Debug.Log("Adding player with id " + player.Key);
                 players.Add(player.Key, player.Value);
-
             }
         }
     }
@@ -243,14 +237,8 @@ public class MyClient : MonoBehaviour{
         //Debug.Log("Player " + id + "received broadcast for player " + playerId);
         if (!players.ContainsKey(playerId))
         {
-            //TODO remove in prod
-            if (id == 1)
-            {
-                SpawnPlayer(playerId, playerEntity);
-                //Camera.main.GetComponent<CameraFollow>().SetTarget(players[1].transform);
-                playerShoot = players[id].GetComponent<PlayerShoot>();
-
-            }
+            SpawnPlayer(playerId, playerEntity);
+            playerShoot = players[id].GetComponent<PlayerShoot>();
         }
         //Send ACK
         SendNewPlayerAck(playerId, (int) PacketType.NEW_PLAYER_BROADCAST);
@@ -297,7 +285,7 @@ public class MyClient : MonoBehaviour{
         packet.Free();
     }
     
-    private void SendClientInput() 
+    private void TakeClientInput() 
     {
         inputIndex += 1;
         int hitPlayerId = -1;
@@ -341,28 +329,24 @@ public class MyClient : MonoBehaviour{
         
         if (action.jump && controller.isGrounded)
         {
-            direction = controller.transform.up;
-            controller.Move(direction * (speed * 10 * Time.fixedDeltaTime)); 
+            direction += controller.transform.up * (speed * 10 * Time.fixedDeltaTime);
         }
-        if (action.left) {
-            direction = -controller.transform.right;
-            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+        if (action.left)
+        {
+            direction += -controller.transform.right * (speed * Time.fixedDeltaTime);
         }
         if (action.right) {
-            direction = controller.transform.right;
-            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+            direction += controller.transform.right *(speed * Time.fixedDeltaTime) ;
         }
         if (action.up) {
-            direction = controller.transform.forward;
-            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+            direction += controller.transform.forward * (speed * Time.fixedDeltaTime);
         }
         if (action.down) {
-            direction = -controller.transform.forward;
-            controller.Move(direction * (speed * Time.fixedDeltaTime)); 
+            direction += -controller.transform.forward * (speed * Time.fixedDeltaTime);
         }
 
         direction.y -= gravity * Time.fixedDeltaTime;
-        controller.Move(direction * Time.fixedDeltaTime);
+        controller.Move(direction);
     }
     
     private void ResendIfExpired()
@@ -426,7 +410,10 @@ public class MyClient : MonoBehaviour{
         Snapshot snapshot = interpolationBuffer[interpolationBuffer.Count - 1];
         ClientEntity playerEntity = snapshot.worldInfo.players[id];
         ClientInfo playerInfo = snapshot.worldInfo.playersInfo[id];
+        
         PlayerInfoUpdate(playerInfo);
+        DebugConsoleUpdate(playerEntity);
+        
         GameObject gameObject = new GameObject();
         gameObject.AddComponent<CharacterController>();
         gameObject.GetComponent<CharacterController>().center = new Vector3(0f, 1.5f, 0f);
@@ -468,6 +455,15 @@ public class MyClient : MonoBehaviour{
             text.text = clientInfo.life.ToString();
         }
     }
+    
+    private void DebugConsoleUpdate(ClientEntity clientEntity)
+    {
+        Text text = GameObject.Find("IdText").GetComponent<Text>();
+        Text postText = GameObject.Find("PositionText").GetComponent<Text>();
+        text.text = "Id: " + id.ToString();
+        postText.text = "Position: " + clientEntity.position.ToString();
+
+    }
 
     private void SpawnPlayer(int playerId, ClientEntity playerEntity)
     {
@@ -485,7 +481,9 @@ public class MyClient : MonoBehaviour{
             player = Instantiate(otherPlayerPrefab, position, rotation);
 
         }
-        players.Add(playerId, player);
+
+        playerEntity.playerGameObject = player;
+        players[playerId] = player;
         player.name = playerId.ToString();
     }
 
