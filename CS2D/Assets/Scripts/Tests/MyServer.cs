@@ -88,8 +88,8 @@ public class MyServer : MonoBehaviour {
     }
 
     public void Update() {
-        accum += Time.deltaTime;    
-        serverTime += Time.deltaTime;
+        accum += Time.fixedDeltaTime;    
+        serverTime += Time.fixedDeltaTime;
         
         ProcessPacket();
         

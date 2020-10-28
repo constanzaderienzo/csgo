@@ -38,7 +38,7 @@ public class JoinGameLoad : MonoBehaviour
 
     private void Update()
     {
-        time += Time.deltaTime;
+        time += Time.fixedDeltaTime;
         
         // ReceiveHealthAck();
         // CheckIfExpired();
