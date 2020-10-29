@@ -116,6 +116,9 @@ public class MyServer : MonoBehaviour {
                 case (int) PacketType.INPUT:
                     ServerReceivesClientInput(packet);
                     break;
+                case (int) PacketType.SHOTS:
+                    ServerReceivesClientShots(packet);
+                    break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
                     JoinPlayer(packet);
                     break;
@@ -184,13 +187,26 @@ public class MyServer : MonoBehaviour {
         }
         
         if(clientId != -1 && client != null)
-            SendAck(client.inputId, clients[clientId].ipEndPoint, (int) PacketType.ACK);
+            SendAck(client.inputId, clients[clientId].ipEndPoint, (int) PacketType.ACK, (int) PacketType.INPUT);
     }
 
-    private void SendAck(int inputIndex, IPEndPoint clientEndpoint, int ackType) {
+    private void ServerReceivesClientShots(Packet packet)
+    {
+        int packetNumber = packet.buffer.GetInt();
+        int clientId = packet.buffer.GetInt();
+        int hitPlayer = packet.buffer.GetInt();
+        float damageTaken = packet.buffer.GetFloat();
+        if(hitPlayer != -1)
+            ApplyHit(hitPlayer, clientId, damageTaken);
+        
+        SendAck(packetNumber, clients[clientId].ipEndPoint, (int) PacketType.ACK, (int) PacketType.SHOTS);
+    }
+
+    private void SendAck(int inputIndex, IPEndPoint clientEndpoint, int ackType, int packetType ) {
         var packet = Packet.Obtain();
         packet.buffer.PutInt(ackType);
         packet.buffer.PutInt(inputIndex);
+        packet.buffer.PutInt(packetType);
         packet.buffer.Flush();
         channel.Send(packet, clientEndpoint);
     }
@@ -234,13 +250,11 @@ public class MyServer : MonoBehaviour {
         direction.y -= gravity * Time.fixedDeltaTime;
         controller.Move(direction * Time.fixedDeltaTime);
         
-        if(action.hitPlayerId != -1)
-            ApplyHit(action.hitPlayerId, action.id);
     }
 
-    private void ApplyHit(int actionHitPlayerId, int sourceId)
+    private void ApplyHit(int actionHitPlayerId, int sourceId, float damage)
     {
-        clients[actionHitPlayerId].life -= 10f;
+        clients[actionHitPlayerId].life -= damage;
         
         if (clients[actionHitPlayerId].life <= 0f)
         {
@@ -312,7 +326,7 @@ public class MyServer : MonoBehaviour {
         Debug.Log("Client with id " + clientId + " and endpoint " + endPoint.Address + endPoint.Port + " was added");
         ClientInfo clientInfo = new ClientInfo(clientUsername, endPoint);
         clients[clientId] = clientInfo;
-        SendAck(clientId, endPoint, (int)PacketType.PLAYER_JOINED_GAME_ACK);
+        SendAck(clientId, endPoint, (int)PacketType.PLAYER_JOINED_GAME_ACK, (int) PacketType.PLAYER_JOINED_GAME_ACK);
         AddPlayerToWorld(clientId);
     }
 

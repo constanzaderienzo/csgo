@@ -30,9 +30,11 @@ public class MyClient : MonoBehaviour{
     private List<Actions> clientActions;
     private readonly Dictionary<int, Actions> appliedActions;
     private List<ReliablePacket> packetsToSend;
+    private List<ReliablePacket> shotsToSend;
     private ReliablePacket sentJoinEvent;
     private List<Packet> queuedInputs;
-    private int inputIndex;    
+    private int inputIndex;
+    private int shotsPacketIndex;
     private Dictionary<int, GameObject> players;
     public int id;
     private int lastRemoved;
@@ -63,6 +65,7 @@ public class MyClient : MonoBehaviour{
         clientActions = new List<Actions>();
         interpolationBuffer = new List<Snapshot>();
         packetsToSend = new List<ReliablePacket>();
+        shotsToSend = new List<ReliablePacket>();
         queuedInputs = new List<Packet>();
         queuedActions = new List<Actions>();
         channel = new Channel(9000 + id);
@@ -91,6 +94,7 @@ public class MyClient : MonoBehaviour{
     {
         this.username = username;
     }
+    
     public void SetServerEndpoint(string address)
     {
         Debug.Log(address);
@@ -127,7 +131,7 @@ public class MyClient : MonoBehaviour{
     {
         foreach (Packet packet in queuedInputs)
         {
-            SendReliablePacket(packet, 2f);
+            SendReliablePacket(packet, 2f, PacketType.INPUT);
         }
         queuedInputs.RemoveRange(0, queuedInputs.Count);
     }
@@ -157,7 +161,8 @@ public class MyClient : MonoBehaviour{
                 exitPanel.SetActive(false);
             }
         }
-            
+
+        SendShots();
         ProcessPacket();
 
     }
@@ -178,9 +183,7 @@ public class MyClient : MonoBehaviour{
                     GetServerAck(packet);
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME_ACK:
-                    Debug.Log("Got player joined ack");
                     id = packet.buffer.GetInt();
-                    Debug.Log("My id is " + id);
                     sentJoinEvent = null;
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
@@ -264,9 +267,17 @@ public class MyClient : MonoBehaviour{
         channel.Send(packet, serverEndpoint);
     }
 
-    private void SendReliablePacket(Packet packet, float timeout)
+    private void SendReliablePacket(Packet packet, float timeout, PacketType packetType )
     {
-        packetsToSend.Add(new ReliablePacket(packet, inputIndex, timeout, packetsTime, id));
+        if (packetType == PacketType.INPUT)
+        {
+            packetsToSend.Add(new ReliablePacket(packet, inputIndex, timeout, packetsTime, id));
+        }
+        else if (packetType == PacketType.SHOTS)
+        {
+            shotsToSend.Add(new ReliablePacket(packet, shotsPacketIndex, timeout, packetsTime, id));
+        }
+        
         channel.Send(packet, serverEndpoint);
     }
     
@@ -297,15 +308,7 @@ public class MyClient : MonoBehaviour{
     private void TakeClientInput() 
     {
         inputIndex += 1;
-        int hitPlayerId = -1;
-        if (Input.GetMouseButtonDown(0) && !paused)
-        {
-            //hitPlayerId = CheckForHits();
-            hitPlayerId = playerShoot.Shoot();
-            Animator animator = players[id].GetComponent<Animator>();
-            //animator.SetBool("Shoot_b", true);
-        }
-        
+      
         var action = new Actions(
             id,
             inputIndex, 
@@ -314,8 +317,7 @@ public class MyClient : MonoBehaviour{
             Input.GetKey(KeyCode.D),
             Input.GetKey(KeyCode.W),
             Input.GetKey(KeyCode.S),
-            players[id].transform.eulerAngles,
-            hitPlayerId
+            players[id].transform.eulerAngles
         );
 
         queuedActions.Add(action);
@@ -331,7 +333,31 @@ public class MyClient : MonoBehaviour{
         packet.buffer.Flush();
         queuedInputs.Add(packet);
     }
-    
+
+    private void SendShots()
+    {
+        int hitPlayerId = -1;
+        if (Input.GetMouseButtonDown(0) && !paused)
+        {
+            hitPlayerId = playerShoot.Shoot();
+            Animator animator = players[id].GetComponent<Animator>();
+            //animator.SetBool("Shoot_b", true);
+        }
+
+        shotsPacketIndex++;
+
+        float damage = 10f;
+        
+        var packet = Packet.Obtain();
+        packet.buffer.PutInt((int) PacketType.SHOTS);
+        packet.buffer.PutInt(shotsPacketIndex);
+        packet.buffer.PutInt(id);
+        packet.buffer.PutInt(hitPlayerId);
+        packet.buffer.PutFloat(damage);
+        packet.buffer.Flush();
+        SendReliablePacket(packet, 2f, PacketType.SHOTS);
+    }
+   
     private void ApplyClientInput(Actions action, CharacterController controller)
     {
         Vector3 direction = new Vector3();
@@ -370,26 +396,53 @@ public class MyClient : MonoBehaviour{
         }
     }
     
-    private void CheckIfReliablePacketReceived(int index)
+    private void CheckIfReliablePacketReceived(int index, int ackType)
     {
         int toRemove = -1;
-        var sizeAtMoment = packetsToSend.Count;
-        for (int i = 0; i < sizeAtMoment; i++)
+        if (ackType == (int) PacketType.INPUT)
         {
-            if(packetsToSend[i].packetIndex == index)
+            var sizeAtMoment = packetsToSend.Count;
+            for (int i = 0; i < sizeAtMoment; i++)
             {
-                toRemove = i;
-                break;
+                if(packetsToSend[i].packetIndex == index)
+                {
+                    toRemove = i;
+                    break;
+                }
+            }
+            if(toRemove != -1)
+            {
+                packetsToSend.RemoveRange(0, toRemove);
             }
         }
-        if(toRemove != -1)
+        else if (ackType == (int) PacketType.SHOTS)
         {
-            packetsToSend.RemoveRange(0, toRemove);
+            
+            var sizeAtMoment = shotsToSend.Count;
+            for (int i = 0; i < sizeAtMoment; i++)
+            {
+                if(shotsToSend[i].packetIndex == index)
+                {
+                    toRemove = i;
+                    break;
+                }
+            }
+            if(toRemove != -1)
+            {
+                shotsToSend.RemoveRange(0, toRemove);
+            }
         }
     }
     
     private void GetServerAck(Packet packet) {
         int packetNumber = packet.buffer.GetInt();
+        int ackType = packet.buffer.GetInt();
+        if (ackType == (int) PacketType.SHOTS)
+        {
+            CheckIfReliablePacketReceived(packetNumber, ackType);
+            return;
+        }
+        
         int quantity = packetNumber - lastRemoved;
         lastRemoved = packetNumber;
         //Debug.Log("Got packet " + packetNumber);
@@ -399,7 +452,7 @@ public class MyClient : MonoBehaviour{
             clientActions.RemoveAt(0);
             quantity--;
         }
-        CheckIfReliablePacketReceived(packetNumber);
+        CheckIfReliablePacketReceived(packetNumber, ackType);
         
     }
     
@@ -455,6 +508,7 @@ public class MyClient : MonoBehaviour{
         if(!clientInfo.isDead && deadScreen.activeSelf)
             deadScreen.SetActive(false);
     }
+    
     private void PlayerInfoUpdate(ClientInfo clientInfo)
     {
         Text text = GameObject.Find("HealthText").GetComponent<Text>();

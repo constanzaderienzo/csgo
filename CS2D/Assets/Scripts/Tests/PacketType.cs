@@ -10,5 +10,5 @@
         PLAYER_JOINED_GAME_ACK = 6,
         PLAYER_DISCONNECT = 7,
         HEALTH = 8,
-        USERNAME_VALID = 9
+        SHOTS = 9
     }

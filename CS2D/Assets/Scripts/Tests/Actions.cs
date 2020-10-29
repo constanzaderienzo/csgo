@@ -14,9 +14,8 @@ public class Actions
     public float rotationX;
     public float rotationY;
     public float rotationZ;
-    public int hitPlayerId;
 
-    public Actions(int id, int index, bool jump, bool left, bool right, bool up, bool down, Vector3 eulerAngles, int hitPlayerId) {
+    public Actions(int id, int index, bool jump, bool left, bool right, bool up, bool down, Vector3 eulerAngles) {
         this.id = id;
         inputIndex = index;
         this.jump = jump;
@@ -27,7 +26,6 @@ public class Actions
         rotationX = eulerAngles.x;
         rotationY = eulerAngles.y;
         rotationZ = eulerAngles.z;
-        this.hitPlayerId = hitPlayerId;
     }
 
     public Actions() {
@@ -44,7 +42,6 @@ public class Actions
         buffer.PutFloat(rotationX);
         buffer.PutFloat(rotationY);
         buffer.PutFloat(rotationZ);
-        buffer.PutInt(hitPlayerId);
     }
 
     public void DeserializeInput(BitBuffer buffer) {
@@ -58,7 +55,6 @@ public class Actions
         rotationX = buffer.GetFloat();
         rotationY = buffer.GetFloat();
         rotationZ = buffer.GetFloat();
-        hitPlayerId = buffer.GetInt();
     }
     
 }
