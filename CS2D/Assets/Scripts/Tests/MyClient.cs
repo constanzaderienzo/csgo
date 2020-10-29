@@ -16,6 +16,7 @@ public class MyClient : MonoBehaviour{
     [SerializeField]
     private GameObject playerUIPrefab;
     private GameObject playerUIInstance;
+    private GameObject deadScreen;
     private Channel channel;
     private IPEndPoint serverEndpoint;
     private List<Snapshot> interpolationBuffer;
@@ -48,6 +49,8 @@ public class MyClient : MonoBehaviour{
     {
         Debug.Log("Awaking");
         JoinGameLoad joinGameLoad = GameObject.Find("NetworkManager").GetComponent<JoinGameLoad>();
+        deadScreen = GameObject.Find("Died");
+        deadScreen.SetActive(false);
         SetId(joinGameLoad.id);
         //SetServerEndpoint(joinGameLoad.roomName);
         epsilon = 0.5f;
@@ -409,7 +412,8 @@ public class MyClient : MonoBehaviour{
         Snapshot snapshot = interpolationBuffer[interpolationBuffer.Count - 1];
         ClientEntity playerEntity = snapshot.worldInfo.players[id];
         ClientInfo playerInfo = snapshot.worldInfo.playersInfo[id];
-        
+
+        HandlePlayerRespawn(playerInfo);
         PlayerInfoUpdate(playerInfo);
         DebugConsoleUpdate(playerEntity);
         
@@ -437,7 +441,12 @@ public class MyClient : MonoBehaviour{
 
         Destroy(gameObject);
     }
-    
+
+    private void HandlePlayerRespawn(ClientInfo clientInfo)
+    {
+        if(!clientInfo.isDead && deadScreen.activeSelf)
+            deadScreen.SetActive(false);
+    }
     private void PlayerInfoUpdate(ClientInfo clientInfo)
     {
         Text text = GameObject.Find("HealthText").GetComponent<Text>();
@@ -493,6 +502,13 @@ public class MyClient : MonoBehaviour{
             Text points = GameObject.Find("KillText").GetComponent<Text>();
             points.text = (Int32.Parse(points.text) + 1).ToString();
         }
+        else if (killedId == id)
+        {
+            deadScreen.SetActive(true);
+            Text killer = GameObject.Find("PlayerDeadText").GetComponent<Text>();
+            killer.text = "Player " + sourceId + " killed you.";
+        }
+            
         Killfeed killfeed = GameObject.Find("Killfeed").GetComponent<Killfeed>();
         killfeed.OnKill(killedId,sourceId);
     }
