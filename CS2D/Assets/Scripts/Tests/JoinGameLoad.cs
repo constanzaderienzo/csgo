@@ -13,8 +13,9 @@ public class JoinGameLoad : MonoBehaviour
 
     private float time;
     public string address;
-    public int id;
+    public string username;
     private bool hasId;
+    public int id;
     public InputField joinAddressInput;
     public InputField joinIdInput;
 
@@ -30,8 +31,8 @@ public class JoinGameLoad : MonoBehaviour
     private void Awake()
     {
         joinAddressInput.onEndEdit.AddListener((value) => SetAddress(value));
-        joinIdInput.onEndEdit.AddListener((value) => SetId(value));
-        //loadChannel = new Channel(8999);
+        joinIdInput.onEndEdit.AddListener((value) => SetUsername(value));
+        loadChannel = new Channel(9001);
         sentTime = -1f;
         retries = 1;
     }
@@ -40,13 +41,13 @@ public class JoinGameLoad : MonoBehaviour
     {
         time += Time.fixedDeltaTime;
         
-        // ReceiveHealthAck();
-        // CheckIfExpired();
+         ReceiveHealthAck();
+         CheckIfExpired();
     }
 
     private void CheckIfExpired()
     {
-        if (sentTime > -1f && time > (sentTime * retries) + 0.5f)
+        if (sentTime > -1f && time > sentTime + (0.5f * retries))
         {
             Debug.Log("Time expired");
             retries++;
@@ -60,46 +61,50 @@ public class JoinGameLoad : MonoBehaviour
     public void SetAddress(string name)
     {
         Debug.Log(name);
+        hasId = true;
         address = name;
     }
     
-    public void SetId(string userId)
+    // public void SetId(string userId)
+    // {
+    //     Debug.Log(userId);
+    //     int idOut;
+    //     hasId = Int32.TryParse(userId, out idOut);
+    //     id = idOut;
+    // }
+    public void SetUsername(string username)
     {
-        Debug.Log(userId);
-        int idOut;
-        hasId = Int32.TryParse(userId, out idOut);
-        id = idOut;
+        this.username = username;
     }
 
     public void JoinRoom()
     {
-        SceneManager.LoadScene("ClientScene");
 
         // TODO check if server exists (maybe with a test connection or health ping)
         // TODO check username 
-        // IPAddress parsedAddress;
-        // try
-        // {
-        //     parsedAddress = IPAddress.Parse(address);
-        //     if (!string.IsNullOrEmpty(address) && hasId )
-        //     {
-        //         Debug.Log("Joining room " + address + " with room for " + roomSize + " with id " + id);
-        //         if (sentTime < 0f)
-        //         {
-        //             Packet packet = Packet.Obtain();
-        //             packet.buffer.PutInt((int)PacketType.HEALTH);
-        //             packet.buffer.PutInt(id);
-        //             packet.buffer.Flush();
-        //             loadChannel.Send(packet, new IPEndPoint(parsedAddress, 9000));
-        //         }
-        //         //Todo disable button and show loading
-        //         sentTime = time;
-        //     }
-        // }
-        // catch (Exception e)
-        // {
-        //     Debug.Log("Invalid address");
-        // }
+        IPAddress parsedAddress;
+        try
+        {
+            parsedAddress = IPAddress.Parse(address);
+            if (!string.IsNullOrEmpty(address) && hasId )
+            {
+                Debug.Log("Joining room " + address + " with room for " + roomSize + " with id " + id);
+                if (sentTime < 0f)
+                {
+                    Packet packet = Packet.Obtain();
+                    packet.buffer.PutInt((int)PacketType.HEALTH);
+                    packet.buffer.PutString(username);
+                    packet.buffer.Flush();
+                    loadChannel.Send(packet, new IPEndPoint(parsedAddress, 9000));
+                }
+                //Todo disable button and show loading
+                sentTime = time;
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.Log("Invalid address");
+        }
         
 
     }
@@ -116,6 +121,7 @@ public class JoinGameLoad : MonoBehaviour
                 bool validUsername = packet.buffer.GetBit();
                 if (validUsername)
                 {
+                    id = packet.buffer.GetInt();
                     loadChannel.Disconnect();
                     SceneManager.LoadScene("ClientScene");
                     sentTime = -1f;
