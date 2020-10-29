@@ -142,14 +142,19 @@ public class MyServer : MonoBehaviour {
         Debug.Log("Received health ping " + packet.fromEndPoint);
         var outPacket = Packet.Obtain();
         outPacket.buffer.PutInt((int) PacketType.HEALTH);
-        bool validUsername;
-        int clientId = packet.buffer.GetInt();
-        if (clients.ContainsKey(clientId))
-            validUsername = false;
-        else
-            validUsername = true;
+        bool validUsername = true;
+        string clientUsername = packet.buffer.GetString();
+        foreach (var clientInfo in clients.Values)
+        {
+            if (clientInfo.username == clientUsername)
+            {
+                validUsername = false;
+                break;
+            }
+        }
         
         outPacket.buffer.PutBit(validUsername);
+        outPacket.buffer.PutInt(clients.Count + 1);
         outPacket.buffer.Flush();
         channel.Send(outPacket, packet.fromEndPoint);
     }
@@ -183,8 +188,6 @@ public class MyServer : MonoBehaviour {
     }
 
     private void SendAck(int inputIndex, IPEndPoint clientEndpoint, int ackType) {
-        if(ackType == (int) PacketType.PLAYER_JOINED_GAME_ACK)
-            Debug.Log("Sending ack ");
         var packet = Packet.Obtain();
         packet.buffer.PutInt(ackType);
         packet.buffer.PutInt(inputIndex);
@@ -238,17 +241,18 @@ public class MyServer : MonoBehaviour {
     private void ApplyHit(int actionHitPlayerId, int sourceId)
     {
         clients[actionHitPlayerId].life -= 10f;
+        
         if (clients[actionHitPlayerId].life <= 0f)
         {
             clients[actionHitPlayerId].isDead = true;
             clientsGameObjects[actionHitPlayerId].SetActive(false);
             clientsGameObjects[actionHitPlayerId].GetComponent<CharacterController>().enabled = false;
             clients[actionHitPlayerId].timeToRespawn = timeToRespawn;
-            SendKillfeedEvent(actionHitPlayerId, sourceId);
+            SendKillfeedEvent(clients[actionHitPlayerId].username, clients[sourceId].username);
         }
     }
 
-    private void SendKillfeedEvent(int killedId, int sourceId)
+    private void SendKillfeedEvent(string killedUsername, string sourceUsername)
     {
         foreach (var id in clients.Keys)
         {
@@ -257,8 +261,8 @@ public class MyServer : MonoBehaviour {
                 IPEndPoint clientEndpoint = clients[id].ipEndPoint;
                 var packet = Packet.Obtain();
                 packet.buffer.PutInt((int) PacketType.KILLFEED_EVENT);
-                packet.buffer.PutInt(killedId);
-                packet.buffer.PutInt(sourceId);
+                packet.buffer.PutString(killedUsername);
+                packet.buffer.PutString(sourceUsername);
                 packet.buffer.Flush();
                 //Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);
                 channel.Send(packet, clientEndpoint);
@@ -302,10 +306,11 @@ public class MyServer : MonoBehaviour {
 
     private void JoinPlayer(Packet packet)
     {
-        int clientId = packet.buffer.GetInt();
+        string clientUsername = packet.buffer.GetString();
+        int clientId = clients.Count + 1;
         IPEndPoint endPoint = packet.fromEndPoint;
         Debug.Log("Client with id " + clientId + " and endpoint " + endPoint.Address + endPoint.Port + " was added");
-        ClientInfo clientInfo = new ClientInfo(clientId, endPoint);
+        ClientInfo clientInfo = new ClientInfo(clientUsername, endPoint);
         clients[clientId] = clientInfo;
         SendAck(clientId, endPoint, (int)PacketType.PLAYER_JOINED_GAME_ACK);
         AddPlayerToWorld(clientId);

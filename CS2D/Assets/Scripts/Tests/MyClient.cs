@@ -43,6 +43,7 @@ public class MyClient : MonoBehaviour{
     private PlayerShoot playerShoot;
     public GameObject exitPanel;
     private bool paused;
+    private string username;
 
 
     private void Awake()
@@ -51,8 +52,9 @@ public class MyClient : MonoBehaviour{
         JoinGameLoad joinGameLoad = GameObject.Find("NetworkManager").GetComponent<JoinGameLoad>();
         deadScreen = GameObject.Find("Died");
         deadScreen.SetActive(false);
+        SetUsername(joinGameLoad.username);
         SetId(joinGameLoad.id);
-        //SetServerEndpoint(joinGameLoad.roomName);
+        SetServerEndpoint(joinGameLoad.address);
         epsilon = 0.5f;
         players = new Dictionary<int, GameObject>();
         inputIndex = 0;
@@ -70,10 +72,9 @@ public class MyClient : MonoBehaviour{
 
     private void SendJoinToServer()
     {
-        Debug.Log("Sending join to server");
         Packet packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.PLAYER_JOINED_GAME);
-        packet.buffer.PutInt(id);
+        packet.buffer.PutString(username);
         packet.buffer.Flush();
         // In this case packetIndex is not used. 
         sentJoinEvent = new ReliablePacket(packet, id, 1f, time, -1); 
@@ -86,8 +87,13 @@ public class MyClient : MonoBehaviour{
         this.id = id;
     }
 
+    public void SetUsername(string username)
+    {
+        this.username = username;
+    }
     public void SetServerEndpoint(string address)
     {
+        Debug.Log(address);
         serverEndpoint = new IPEndPoint(IPAddress.Parse(address), 9000);
     }
 
@@ -173,6 +179,8 @@ public class MyClient : MonoBehaviour{
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME_ACK:
                     Debug.Log("Got player joined ack");
+                    id = packet.buffer.GetInt();
+                    Debug.Log("My id is " + id);
                     sentJoinEvent = null;
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
@@ -184,9 +192,9 @@ public class MyClient : MonoBehaviour{
                     AddClient(newPlayer.playerId, newPlayer.newPlayer);
                     break;
                 case (int) PacketType.KILLFEED_EVENT:
-                    int killedId = packet.buffer.GetInt();
-                    int sourceId = packet.buffer.GetInt();
-                    DeathEvent(killedId, sourceId);
+                    string killedUsername = packet.buffer.GetString();
+                    string sourceUsername = packet.buffer.GetString();
+                    DeathEvent(killedUsername, sourceUsername);
                     break;
                 default:
                     Debug.Log("Unrecognized type in client" + packetType);
@@ -495,22 +503,22 @@ public class MyClient : MonoBehaviour{
         player.name = playerId.ToString();
     }
 
-    private void DeathEvent(int killedId, int sourceId)
+    private void DeathEvent(string killedUsername, string sourceUsername)
     {
-        if (sourceId == id)
+        if (sourceUsername == username)
         {
             Text points = GameObject.Find("KillText").GetComponent<Text>();
             points.text = (Int32.Parse(points.text) + 1).ToString();
         }
-        else if (killedId == id)
+        else if (killedUsername == username)
         {
             deadScreen.SetActive(true);
             Text killer = GameObject.Find("PlayerDeadText").GetComponent<Text>();
-            killer.text = "Player " + sourceId + " killed you.";
+            killer.text = sourceUsername + " killed you.";
         }
             
         Killfeed killfeed = GameObject.Find("Killfeed").GetComponent<Killfeed>();
-        killfeed.OnKill(killedId,sourceId);
+        killfeed.OnKill(killedUsername,sourceUsername);
     }
 
     public void Disconnect()

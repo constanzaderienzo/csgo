@@ -21,7 +21,7 @@ public class KillfeedItem : MonoBehaviour
             Destroy(gameObject);
     }
 
-    public void Setup(int player, int source)
+    public void Setup(string player, string source)
     {
         text.text = "<b>" + source + "</b>" + " killed " + "<i>" + player + "</i>";
     }

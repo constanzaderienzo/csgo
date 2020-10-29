@@ -13,93 +13,106 @@ public class JoinGameLoad : MonoBehaviour
 
     private float time;
     public string address;
+    public string username;
     public int id;
-    private bool hasId;
     public InputField joinAddressInput;
     public InputField joinIdInput;
-
+    public Text errorText;
 
     private IPEndPoint serverEndpoint;
 
     private Dictionary<int, MyClient> clients;
     private List<ReliablePacket> sentPlayerJoinEvents;
-
+    public Button joinButton;
     private Channel loadChannel;
     private float sentTime;
     private int retries;
+    private bool receivedACK;
     private void Awake()
     {
         joinAddressInput.onEndEdit.AddListener((value) => SetAddress(value));
-        joinIdInput.onEndEdit.AddListener((value) => SetId(value));
-        //loadChannel = new Channel(8999);
+        joinIdInput.onEndEdit.AddListener((value) => SetUsername(value));
         sentTime = -1f;
         retries = 1;
+        errorText.text = "";
+        receivedACK = false;
     }
 
     private void Update()
     {
         time += Time.fixedDeltaTime;
-        
-        // ReceiveHealthAck();
-        // CheckIfExpired();
+        if (loadChannel != null)
+        {
+            ReceiveHealthAck();
+            CheckIfExpired();
+        }
+
     }
 
     private void CheckIfExpired()
     {
-        if (sentTime > -1f && time > (sentTime * retries) + 0.5f)
+        if (sentTime > -1f && !receivedACK && time > sentTime + (0.5f * retries))
         {
             Debug.Log("Time expired");
             retries++;
             if (retries > 3)
             {
-                Debug.Log("Server unavailable");
+                errorText.text = "Server unavailable";
+                joinButton.interactable = true;
             }
         }
     }
 
     public void SetAddress(string name)
     {
-        Debug.Log(name);
+
         address = name;
     }
     
-    public void SetId(string userId)
+    public void SetUsername(string username)
     {
-        Debug.Log(userId);
-        int idOut;
-        hasId = Int32.TryParse(userId, out idOut);
-        id = idOut;
+        this.username = username;
     }
 
     public void JoinRoom()
     {
-        SceneManager.LoadScene("ClientScene");
 
-        // TODO check if server exists (maybe with a test connection or health ping)
-        // TODO check username 
-        // IPAddress parsedAddress;
-        // try
-        // {
-        //     parsedAddress = IPAddress.Parse(address);
-        //     if (!string.IsNullOrEmpty(address) && hasId )
-        //     {
-        //         Debug.Log("Joining room " + address + " with room for " + roomSize + " with id " + id);
-        //         if (sentTime < 0f)
-        //         {
-        //             Packet packet = Packet.Obtain();
-        //             packet.buffer.PutInt((int)PacketType.HEALTH);
-        //             packet.buffer.PutInt(id);
-        //             packet.buffer.Flush();
-        //             loadChannel.Send(packet, new IPEndPoint(parsedAddress, 9000));
-        //         }
-        //         //Todo disable button and show loading
-        //         sentTime = time;
-        //     }
-        // }
-        // catch (Exception e)
-        // {
-        //     Debug.Log("Invalid address");
-        // }
+        retries = 0;
+        sentTime = -1f;
+        IPAddress parsedAddress;
+        try
+        {
+            parsedAddress = IPAddress.Parse(address);
+            if (!string.IsNullOrEmpty(address) && !string.IsNullOrEmpty(username) )
+            {
+                Debug.Log("Joining room " + address + " with room for " + roomSize + " with id " + id);
+                if (sentTime < 0f)
+                {
+                    if(loadChannel == null)
+                        loadChannel = new Channel(8999);
+                    Packet packet = Packet.Obtain();
+                    packet.buffer.PutInt((int)PacketType.HEALTH);
+                    packet.buffer.PutString(username);
+                    packet.buffer.Flush();
+                    Debug.Log("Pinging " + parsedAddress);
+                    loadChannel.Send(packet, new IPEndPoint(parsedAddress, 9000));
+                    sentTime = time;
+                    joinButton.interactable = false;
+
+                }
+                //Todo show loading
+            }
+            else
+            {
+                errorText.text = "Please fill in all required fields";
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.Log("Invalid address");
+            errorText.text = "Invalid address";
+            joinButton.interactable = true;
+        }
         
 
     }
@@ -110,12 +123,14 @@ public class JoinGameLoad : MonoBehaviour
         while (packet != null)
         {
             Debug.Log("Received health ack");
+            receivedACK = true;
             int packetType = packet.buffer.GetInt();
             if (packetType == (int) PacketType.HEALTH)
             {
                 bool validUsername = packet.buffer.GetBit();
                 if (validUsername)
                 {
+                    id = packet.buffer.GetInt();
                     loadChannel.Disconnect();
                     SceneManager.LoadScene("ClientScene");
                     sentTime = -1f;
@@ -123,13 +138,15 @@ public class JoinGameLoad : MonoBehaviour
                 else
                 {
                     Debug.Log("Invalid username");
+                    errorText.text = "Invalid username, please try another one.";
+                    joinButton.interactable = true;
+
                 }
             }
             packet.Free();
             packet = loadChannel.GetPacket();
         }
-
-
+        
     }
-    
+
 }
