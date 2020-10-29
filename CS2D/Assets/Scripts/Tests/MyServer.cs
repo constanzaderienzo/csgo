@@ -62,7 +62,7 @@ public class MyServer : MonoBehaviour {
         //Debug.Log("Respawning player");
         clientsGameObjects[clientId].transform.position = RandomSpawnPosition();
         clientsGameObjects[clientId].SetActive(true);
-        clientsGameObjects[clientId].GetComponent<CharacterController>().enabled = false;
+        clientsGameObjects[clientId].GetComponent<CharacterController>().enabled = true;
         clients[clientId].isDead = false;
         clients[clientId].life = 100f;
     }
@@ -71,8 +71,13 @@ public class MyServer : MonoBehaviour {
     {
         Vector3 minPosition = new Vector3(-80f, 0f, -23f);
         Vector3 maxPosition = new Vector3(70f,0f, 24f);
-        // TODO check if its colliding
-        return new Vector3(Random.Range(minPosition.x, maxPosition.x), Random.Range(minPosition.y, maxPosition.y), Random.Range(minPosition.z, maxPosition.z) );
+        Vector3 newPosition;
+        do
+        {
+            newPosition = new Vector3(Random.Range(minPosition.x, maxPosition.x), Random.Range(minPosition.y, maxPosition.y), Random.Range(minPosition.z, maxPosition.z) );
+        } while (Physics.CheckSphere(newPosition + new Vector3(0f, 1f, 0f), 1));
+        
+        return newPosition;
     }
 
     private void ApplyClientInputs()

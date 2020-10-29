@@ -397,7 +397,6 @@ public class MyClient : MonoBehaviour{
         var nextTime =  interpolationBuffer[1].packetNumber * (1f/pps);
         var t =  (clientTime - previousTime) / (nextTime - previousTime); 
         
-        Debug.Log("Interpolating " + interpolationBuffer[1].packetNumber);
         Snapshot.CreateInterpolatedAndApply(interpolationBuffer[0], interpolationBuffer[1], players, t, this.id);
         
         if(clientTime > nextTime) {
