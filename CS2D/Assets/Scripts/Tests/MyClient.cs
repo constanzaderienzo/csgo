@@ -54,7 +54,7 @@ public class MyClient : MonoBehaviour{
         deadScreen.SetActive(false);
         SetUsername(joinGameLoad.username);
         SetId(joinGameLoad.id);
-        //SetServerEndpoint(joinGameLoad.roomName);
+        SetServerEndpoint(joinGameLoad.address);
         epsilon = 0.5f;
         players = new Dictionary<int, GameObject>();
         inputIndex = 0;
@@ -93,6 +93,7 @@ public class MyClient : MonoBehaviour{
     }
     public void SetServerEndpoint(string address)
     {
+        Debug.Log(address);
         serverEndpoint = new IPEndPoint(IPAddress.Parse(address), 9000);
     }
 
@@ -513,7 +514,7 @@ public class MyClient : MonoBehaviour{
         {
             deadScreen.SetActive(true);
             Text killer = GameObject.Find("PlayerDeadText").GetComponent<Text>();
-            killer.text = "Player " + sourceUsername + " killed you.";
+            killer.text = sourceUsername + " killed you.";
         }
             
         Killfeed killfeed = GameObject.Find("Killfeed").GetComponent<Killfeed>();
