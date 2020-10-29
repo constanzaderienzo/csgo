@@ -32,7 +32,6 @@ public class JoinGameLoad : MonoBehaviour
     {
         joinAddressInput.onEndEdit.AddListener((value) => SetAddress(value));
         joinIdInput.onEndEdit.AddListener((value) => SetUsername(value));
-        loadChannel = new Channel(9001);
         sentTime = -1f;
         retries = 1;
     }
@@ -40,9 +39,12 @@ public class JoinGameLoad : MonoBehaviour
     private void Update()
     {
         time += Time.fixedDeltaTime;
-        
-         ReceiveHealthAck();
-         CheckIfExpired();
+        if (loadChannel != null)
+        {
+            ReceiveHealthAck();
+            CheckIfExpired();
+        }
+
     }
 
     private void CheckIfExpired()
@@ -91,6 +93,7 @@ public class JoinGameLoad : MonoBehaviour
                 Debug.Log("Joining room " + address + " with room for " + roomSize + " with id " + id);
                 if (sentTime < 0f)
                 {
+                    loadChannel = new Channel(8999);
                     Packet packet = Packet.Obtain();
                     packet.buffer.PutInt((int)PacketType.HEALTH);
                     packet.buffer.PutString(username);

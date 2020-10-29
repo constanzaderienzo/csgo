@@ -154,7 +154,7 @@ public class MyServer : MonoBehaviour {
         }
         
         outPacket.buffer.PutBit(validUsername);
-        outPacket.buffer.PutInt(clients.Count);
+        outPacket.buffer.PutInt(clients.Count + 1);
         outPacket.buffer.Flush();
         channel.Send(outPacket, packet.fromEndPoint);
     }
@@ -248,11 +248,11 @@ public class MyServer : MonoBehaviour {
             clientsGameObjects[actionHitPlayerId].SetActive(false);
             clientsGameObjects[actionHitPlayerId].GetComponent<CharacterController>().enabled = false;
             clients[actionHitPlayerId].timeToRespawn = timeToRespawn;
-            SendKillfeedEvent(actionHitPlayerId, clients[sourceId].username);
+            SendKillfeedEvent(clients[actionHitPlayerId].username, clients[sourceId].username);
         }
     }
 
-    private void SendKillfeedEvent(int killedId, string sourceUsername)
+    private void SendKillfeedEvent(string killedUsername, string sourceUsername)
     {
         foreach (var id in clients.Keys)
         {
@@ -261,7 +261,7 @@ public class MyServer : MonoBehaviour {
                 IPEndPoint clientEndpoint = clients[id].ipEndPoint;
                 var packet = Packet.Obtain();
                 packet.buffer.PutInt((int) PacketType.KILLFEED_EVENT);
-                packet.buffer.PutInt(killedId);
+                packet.buffer.PutString(killedUsername);
                 packet.buffer.PutString(sourceUsername);
                 packet.buffer.Flush();
                 //Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);
@@ -307,7 +307,7 @@ public class MyServer : MonoBehaviour {
     private void JoinPlayer(Packet packet)
     {
         string clientUsername = packet.buffer.GetString();
-        int clientId = clients.Count;
+        int clientId = clients.Count + 1;
         IPEndPoint endPoint = packet.fromEndPoint;
         Debug.Log("Client with id " + clientId + " and endpoint " + endPoint.Address + endPoint.Port + " was added");
         ClientInfo clientInfo = new ClientInfo(clientUsername, endPoint);
