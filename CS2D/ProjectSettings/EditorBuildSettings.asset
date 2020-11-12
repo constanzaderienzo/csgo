@@ -8,13 +8,28 @@ EditorBuildSettings:
   - enabled: 0
     path: 
     guid: 00000000000000000000000000000000
-  - enabled: 1
-    path: Assets/Scene/Lobby.unity
+  - enabled: 0
+    path: Assets/Scenes/Lobby.unity
     guid: 556b95dec4c0a4249a534016a9c05ee9
-  - enabled: 1
-    path: Assets/Scene/ClientScene.unity
+  - enabled: 0
+    path: Assets/Scenes/8-Bit/ClientScene.unity
     guid: 69d8df1a88d42ae47842b8f45f806561
-  - enabled: 1
-    path: Assets/Scene/ServerScene.unity
+  - enabled: 0
+    path: Assets/Scenes/8-Bit/ServerScene.unity
     guid: 81a2e5c563998e14e9e22e936835d0e6
+  - enabled: 0
+    path: Assets/Scenes/Desert/DesertServer.unity
+    guid: 40121021aca758e42acace04f1a64540
+  - enabled: 0
+    path: Assets/Scenes/Desert/DesertClient.unity
+    guid: 4ab34ed194830b242baccd51f6f452e5
+  - enabled: 1
+    path: Assets/Scenes/Futuristic/Level_01_Background.unity
+    guid: e92fb69a78e6c6145a96a30f67a91492
+  - enabled: 1
+    path: Assets/Scenes/Futuristic/Level_01_Gameplay.unity
+    guid: 5c124395aff4b194db9e9eca2a38a9b8
+  - enabled: 1
+    path: Assets/Scenes/Futuristic/Level_01_Main.unity
+    guid: 3f7379b5ac26213418d167168c7cbfa9
   m_configObjects: {}

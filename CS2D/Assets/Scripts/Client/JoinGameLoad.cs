@@ -132,7 +132,7 @@ public class JoinGameLoad : MonoBehaviour
                 {
                     id = packet.buffer.GetInt();
                     loadChannel.Disconnect();
-                    SceneManager.LoadScene("ClientScene");
+                    SceneManager.LoadScene("DesertClient");
                     sentTime = -1f;
                 }
                 else

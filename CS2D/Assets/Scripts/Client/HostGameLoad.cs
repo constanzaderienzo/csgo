@@ -29,7 +29,7 @@ public class HostGameLoad : MonoBehaviour
             
         }
         //Load in mode host 
-        SceneManager.LoadScene("ServerScene");
+        SceneManager.LoadScene("DesertServer");
     }
     
 }
