@@ -219,38 +219,26 @@ public class MyServer : MonoBehaviour {
 
         if (action.jump && controller.isGrounded)
         {
-            direction = player.transform.up;
-            controller.Move(direction * (speed * 10 * Time.fixedDeltaTime));
+            direction += player.transform.up * (speed * 10 * Time.fixedDeltaTime);
         }
-
         if (action.left)
         {
-            direction = -player.transform.right;
-            controller.Move(direction * (speed * Time.fixedDeltaTime));
+            direction += -player.transform.right * (speed * Time.fixedDeltaTime);
         }
-
-        if (action.right)
-        {
-            direction = player.transform.right;
-            controller.Move(direction * (speed * Time.fixedDeltaTime));
+        if (action.right) {
+            direction += player.transform.right * (speed * Time.fixedDeltaTime) ;
         }
-
-        if (action.up)
-        {
-            direction = player.transform.forward;
-            controller.Move(direction * (speed * Time.fixedDeltaTime));
+        if (action.up) {
+            direction += player.transform.forward * (speed * Time.fixedDeltaTime);
         }
-
-        if (action.down)
-        {
-            direction = -player.transform.forward;
-            controller.Move(direction * (speed * Time.fixedDeltaTime));
+        if (action.down) {
+            direction += -player.transform.forward * (speed * Time.fixedDeltaTime);
         }
 
         action.animationState.SetToAnimator(player.GetComponent<Animator>());
 
         direction.y -= gravity * Time.fixedDeltaTime;
-        controller.Move(direction * Time.fixedDeltaTime);
+        controller.Move(direction);
         
     }
 
