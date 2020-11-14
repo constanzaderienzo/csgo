@@ -14,7 +14,9 @@ public class MyServer : MonoBehaviour {
     private float serverTime = 0f;
     private int packetNumber = 0;
     private int pps;
-    private readonly float speed = 10.0f;
+    private readonly float runningSpeed = 10.0f;
+    private readonly float walkingSpeed = 7.0f;
+    private readonly float crouchingSpeed = 5.5f;
     public float gravity = 50.0F;
     private Dictionary<int, GameObject> clientsGameObjects;
     private Dictionary<int, ClientInfo> clients;
@@ -219,20 +221,56 @@ public class MyServer : MonoBehaviour {
 
         if (action.jump && controller.isGrounded)
         {
-            direction += player.transform.up * (speed * 10 * Time.fixedDeltaTime);
+            direction += player.transform.up * (runningSpeed * 10 * Time.fixedDeltaTime);
         }
-        if (action.left)
+
+        if (action.ctrl)
         {
-            direction += -player.transform.right * (speed * Time.fixedDeltaTime);
+            if (action.left)
+            {
+                direction += -player.transform.right * (crouchingSpeed * Time.fixedDeltaTime);
+            }
+            if (action.right) {
+                direction += player.transform.right * (crouchingSpeed * Time.fixedDeltaTime) ;
+            }
+            if (action.up) {
+                direction += player.transform.forward * (crouchingSpeed * Time.fixedDeltaTime);
+            }
+            if (action.down) {
+                direction += -player.transform.forward * (crouchingSpeed * Time.fixedDeltaTime);
+            }
         }
-        if (action.right) {
-            direction += player.transform.right * (speed * Time.fixedDeltaTime) ;
+        else if (action.shift)
+        {
+            if (action.left)
+            {
+                direction += -player.transform.right * (walkingSpeed * Time.fixedDeltaTime);
+            }
+            if (action.right) {
+                direction += player.transform.right * (walkingSpeed * Time.fixedDeltaTime) ;
+            }
+            if (action.up) {
+                direction += player.transform.forward * (walkingSpeed * Time.fixedDeltaTime);
+            }
+            if (action.down) {
+                direction += -player.transform.forward * (walkingSpeed * Time.fixedDeltaTime);
+            }
         }
-        if (action.up) {
-            direction += player.transform.forward * (speed * Time.fixedDeltaTime);
-        }
-        if (action.down) {
-            direction += -player.transform.forward * (speed * Time.fixedDeltaTime);
+        else
+        {
+            if (action.left)
+            {
+                direction += -player.transform.right * (runningSpeed * Time.fixedDeltaTime);
+            }
+            if (action.right) {
+                direction += player.transform.right * (runningSpeed * Time.fixedDeltaTime) ;
+            }
+            if (action.up) {
+                direction += player.transform.forward * (runningSpeed * Time.fixedDeltaTime);
+            }
+            if (action.down) {
+                direction += -player.transform.forward * (runningSpeed * Time.fixedDeltaTime);
+            }
         }
 
         action.animationState.SetToAnimator(player.GetComponent<Animator>());

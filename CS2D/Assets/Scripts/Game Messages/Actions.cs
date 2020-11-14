@@ -11,12 +11,14 @@ public class Actions
     public bool right;
     public bool up;
     public bool down;
+    public bool shift;
+    public bool ctrl;
     public float rotationX;
     public float rotationY;
     public float rotationZ;
     public AnimationState animationState;
 
-    public Actions(int id, int index, bool jump, bool left, bool right, bool up, bool down, Vector3 eulerAngles, AnimationState animationState) {
+    public Actions(int id, int index, bool jump, bool left, bool right, bool up, bool down, bool shift, bool ctrl, Vector3 eulerAngles, AnimationState animationState) {
         this.id = id;
         inputIndex = index;
         this.jump = jump;
@@ -24,6 +26,8 @@ public class Actions
         this.right = right;
         this.up = up;
         this.down = down;
+        this.shift = shift;
+        this.ctrl = ctrl;
         rotationX = eulerAngles.x;
         rotationY = eulerAngles.y;
         rotationZ = eulerAngles.z;
@@ -41,6 +45,8 @@ public class Actions
         buffer.PutBit(right);
         buffer.PutBit(up);
         buffer.PutBit(down);
+        buffer.PutBit(shift);
+        buffer.PutBit(ctrl);
         buffer.PutFloat(rotationX);
         buffer.PutFloat(rotationY);
         buffer.PutFloat(rotationZ);
@@ -55,6 +61,8 @@ public class Actions
         right = buffer.GetBit();
         up = buffer.GetBit();
         down = buffer.GetBit();
+        shift = buffer.GetBit();
+        ctrl = buffer.GetBit();
         rotationX = buffer.GetFloat();
         rotationY = buffer.GetFloat();
         rotationZ = buffer.GetFloat();
