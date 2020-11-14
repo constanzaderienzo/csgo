@@ -38,7 +38,9 @@ public class MyClient : MonoBehaviour{
     private Dictionary<int, GameObject> players;
     public int id;
     private int lastRemoved;
-    private readonly float speed = 10.0f;
+    private readonly float runningSpeed = 10.0f;
+    private readonly float walkingSpeed = 7.0f;
+    private readonly float crouchingSpeed = 5.5f;
     public float gravity = 50.0F;
     private float epsilon;
     private List<Actions> queuedActions;
@@ -310,15 +312,17 @@ public class MyClient : MonoBehaviour{
     private void TakeClientInput() 
     {
         inputIndex += 1;
-      
+
         var action = new Actions(
             id,
-            inputIndex, 
-            Input.GetKey(KeyCode.Space), 
-            Input.GetKey(KeyCode.A), 
+            inputIndex,
+            Input.GetKey(KeyCode.Space),
+            Input.GetKey(KeyCode.A),
             Input.GetKey(KeyCode.D),
             Input.GetKey(KeyCode.W),
             Input.GetKey(KeyCode.S),
+            Input.GetKey(KeyCode.LeftShift),
+            Input.GetKey(KeyCode.LeftControl),
             players[id].transform.eulerAngles,
             AnimationState.GetFromAnimator(animator)
         );
@@ -371,30 +375,77 @@ public class MyClient : MonoBehaviour{
         
         if (action.jump && controller.isGrounded)
         {
-            direction += controller.transform.up * (speed * 10 * Time.fixedDeltaTime);
-        }
-        if (action.left)
-        {
-            direction += -controller.transform.right * (speed * Time.fixedDeltaTime);
-        }
-        if (action.right) {
-            direction += controller.transform.right *(speed * Time.fixedDeltaTime) ;
-        }
-        if (action.up) {
-            direction += controller.transform.forward * (speed * Time.fixedDeltaTime);
-        }
-        if (action.down) {
-            direction += -controller.transform.forward * (speed * Time.fixedDeltaTime);
+            direction += controller.transform.up * (runningSpeed * 10 * Time.fixedDeltaTime);
         }
 
-        if (direction.x > 0f)
+        if (action.ctrl)
+        {
+            if (action.left)
+            {
+                direction += -controller.transform.right * (crouchingSpeed * Time.fixedDeltaTime);
+            }
+            if (action.right) {
+                direction += controller.transform.right * (crouchingSpeed * Time.fixedDeltaTime) ;
+            }
+            if (action.up) {
+                direction += controller.transform.forward * (crouchingSpeed * Time.fixedDeltaTime);
+            }
+            if (action.down) {
+                direction += -controller.transform.forward * (crouchingSpeed * Time.fixedDeltaTime);
+            }
+        }
+        else if (action.shift)
+        {
+            if (action.left)
+            {
+                direction += -controller.transform.right * (walkingSpeed * Time.fixedDeltaTime);
+            }
+            if (action.right) {
+                direction += controller.transform.right * (walkingSpeed * Time.fixedDeltaTime) ;
+            }
+            if (action.up) {
+                direction += controller.transform.forward * (walkingSpeed * Time.fixedDeltaTime);
+            }
+            if (action.down) {
+                direction += -controller.transform.forward * (walkingSpeed * Time.fixedDeltaTime);
+            }
+        }
+        else
+        {
+            if (action.left)
+            {
+                direction += -controller.transform.right * (runningSpeed * Time.fixedDeltaTime);
+            }
+            if (action.right) {
+                direction += controller.transform.right * (runningSpeed * Time.fixedDeltaTime) ;
+            }
+            if (action.up) {
+                direction += controller.transform.forward * (runningSpeed * Time.fixedDeltaTime);
+            }
+            if (action.down) {
+                direction += -controller.transform.forward * (runningSpeed * Time.fixedDeltaTime);
+            }
+        }
+
+        if (action.ctrl)
+        {
+            animator.SetFloat("Speed_f", 0f);
+            animator.SetBool("Crouch_b", true);
+        }
+        else if (direction.x > 0f && action.shift)
+        {
+            animator.SetFloat("Speed_f", 0.2f);
+        }
+        else if (direction.x > 0f)
         {
             animator.SetFloat("Speed_f", 0.6f);
         }
         else
         {
+            animator.SetBool("Crouch_b", false);
             animator.SetFloat("Speed_f", 0f);
         }
+        
         direction.y -= gravity * Time.fixedDeltaTime;
         controller.Move(direction);
     }
