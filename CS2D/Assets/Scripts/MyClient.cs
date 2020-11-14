@@ -46,6 +46,7 @@ public class MyClient : MonoBehaviour{
     public GameObject exitPanel;
     private bool paused;
     private string username;
+    private Animator animator;
 
 
     private void Awake()
@@ -144,6 +145,7 @@ public class MyClient : MonoBehaviour{
         {
             packetsTime += Time.fixedDeltaTime;
             ResendIfExpired();         
+            SendShots();
         }
 
         if (Input.GetKeyDown(KeyCode.Escape))
@@ -162,7 +164,7 @@ public class MyClient : MonoBehaviour{
             }
         }
 
-        SendShots();
+        
         ProcessPacket();
 
     }
@@ -317,7 +319,8 @@ public class MyClient : MonoBehaviour{
             Input.GetKey(KeyCode.D),
             Input.GetKey(KeyCode.W),
             Input.GetKey(KeyCode.S),
-            players[id].transform.eulerAngles
+            players[id].transform.eulerAngles,
+            AnimationState.GetFromAnimator(animator)
         );
 
         queuedActions.Add(action);
@@ -340,8 +343,12 @@ public class MyClient : MonoBehaviour{
         if (Input.GetMouseButtonDown(0) && !paused)
         {
             hitPlayerId = playerShoot.Shoot();
-            Animator animator = players[id].GetComponent<Animator>();
-            //animator.SetBool("Shoot_b", true);
+            animator.SetBool("Shoot_b", true);
+            animator.Play("Handgun_Shoot");
+        }
+        else
+        {
+            animator.SetBool("Shoot_b", false);
         }
 
         shotsPacketIndex++;
@@ -380,6 +387,14 @@ public class MyClient : MonoBehaviour{
             direction += -controller.transform.forward * (speed * Time.fixedDeltaTime);
         }
 
+        if (direction.x > 0f)
+        {
+            animator.SetFloat("Speed_f", 0.6f);
+        }
+        else
+        {
+            animator.SetFloat("Speed_f", 0f);
+        }
         direction.y -= gravity * Time.fixedDeltaTime;
         controller.Move(direction);
     }
@@ -545,6 +560,7 @@ public class MyClient : MonoBehaviour{
         {
             Debug.Log("In own");
             player = Instantiate(playerPrefab, position, rotation);
+            animator = player.GetComponent<Animator>();
         }
         else
         {

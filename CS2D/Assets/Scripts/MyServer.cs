@@ -247,6 +247,8 @@ public class MyServer : MonoBehaviour {
             controller.Move(direction * (speed * Time.fixedDeltaTime));
         }
 
+        action.animationState.SetToAnimator(player.GetComponent<Animator>());
+
         direction.y -= gravity * Time.fixedDeltaTime;
         controller.Move(direction * Time.fixedDeltaTime);
         

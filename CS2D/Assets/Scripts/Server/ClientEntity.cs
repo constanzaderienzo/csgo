@@ -7,17 +7,20 @@ public class ClientEntity
     public Vector3 position;
     public Vector3 eulerAngles;
     public GameObject playerGameObject;
+    public AnimationState animationState;
 
     public ClientEntity(GameObject playerGameObject) {
         this.playerGameObject = playerGameObject;
         this.position = playerGameObject.transform.position;
         this.eulerAngles = playerGameObject.transform.eulerAngles;
+        this.animationState = AnimationState.GetFromAnimator(playerGameObject.GetComponent<Animator>());
     }
     public ClientEntity(GameObject playerGameObject, Vector3 position, Vector3 eulerAngles)
     {
         this.playerGameObject = playerGameObject;
         this.position = position;
         this.eulerAngles = eulerAngles;
+        this.animationState = AnimationState.GetFromAnimator(playerGameObject.GetComponent<Animator>());
     }
 
     public ClientEntity()
@@ -33,6 +36,7 @@ public class ClientEntity
         buffer.PutFloat(transform.eulerAngles.x);
         buffer.PutFloat(transform.eulerAngles.y);
         buffer.PutFloat(transform.eulerAngles.z);
+        animationState.Serialize(buffer);
     }
 
     public static ClientEntity DeserializeInfo(BitBuffer buffer) {
@@ -46,6 +50,7 @@ public class ClientEntity
         newPlayer.eulerAngles.x = buffer.GetFloat();
         newPlayer.eulerAngles.y = buffer.GetFloat();
         newPlayer.eulerAngles.z = buffer.GetFloat();
+        newPlayer.animationState = AnimationState.Deserialize(buffer);
         
         return newPlayer;
     }
@@ -62,15 +67,17 @@ public class ClientEntity
     }
 
     public static void CreateInterpolatedAndApply(ClientEntity previous, ClientEntity next, GameObject gameObject, float t) {
-        var cubeEntity = new ClientEntity(gameObject);
-        cubeEntity.position = Vector3.Lerp(previous.position, next.position, t);
-        cubeEntity.eulerAngles = Vector3.Lerp(previous.eulerAngles, next.eulerAngles, t);
-        cubeEntity.Apply();
+        var clientEntity = new ClientEntity(gameObject);
+        clientEntity.position = Vector3.Lerp(previous.position, next.position, t);
+        clientEntity.eulerAngles = Vector3.Lerp(previous.eulerAngles, next.eulerAngles, t);
+        clientEntity.animationState = next.animationState;
+        clientEntity.Apply();
     }
 
     public void Apply() {
         playerGameObject.GetComponent<Transform>().position = position;
         playerGameObject.GetComponent<Transform>().eulerAngles = eulerAngles;
+        animationState.SetToAnimator(playerGameObject.GetComponent<Animator>());
     }
 
 

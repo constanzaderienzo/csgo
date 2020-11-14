@@ -46,16 +46,9 @@ public class Snapshot
             {
                 var previousPlayerEntity = previous.worldInfo.players[playerId];
                 var nextPlayerEntity = next.worldInfo.players[playerId];
-                ClientEntity.CreateInterpolatedAndApply(previousPlayerEntity, nextPlayerEntity, gameObjects[playerId] ,t);
+                ClientEntity.CreateInterpolatedAndApply(previousPlayerEntity, nextPlayerEntity, gameObjects[playerId], t);
             }
         }
 
-    }
-
-    public void Apply() {
-        foreach (ClientEntity cubeEntity in worldInfo.players.Values)
-        {
-            cubeEntity.Apply();
-        }
     }
 }
