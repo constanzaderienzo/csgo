@@ -274,11 +274,37 @@ public class MyServer : MonoBehaviour {
         }
 
         action.animationState.SetToAnimator(player.GetComponent<Animator>());
-
+        PlaySounds(direction != new Vector3(0f,0f,0f), action.ctrl, action.shift, player.GetComponent<AudioSource>());
         direction.y -= gravity * Time.fixedDeltaTime;
         controller.Move(direction);
         
     }
+    
+    private void PlaySounds(bool moving, bool crouching, bool walking, AudioSource audioSource)
+    {
+        if (moving && crouching)
+        {
+            audioSource.volume = 0f;
+            if(!audioSource.isPlaying)
+                audioSource.Play();
+        }
+        else if (moving && walking)
+        {
+            audioSource.volume = 0.5f;
+            if(!audioSource.isPlaying)
+                audioSource.Play();        
+        }
+        else if (moving)
+        {
+            if(!audioSource.isPlaying)
+                audioSource.Play();
+        }
+        else
+        {
+            audioSource.Pause();
+        }
+    }
+
 
     private void ApplyHit(int actionHitPlayerId, int sourceId, float damage)
     {

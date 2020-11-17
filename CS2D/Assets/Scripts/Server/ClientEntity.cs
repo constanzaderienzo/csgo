@@ -8,12 +8,16 @@ public class ClientEntity
     public Vector3 eulerAngles;
     public GameObject playerGameObject;
     public AnimationState animationState;
+    public bool isPlaying;
+    public float volume;
 
     public ClientEntity(GameObject playerGameObject) {
         this.playerGameObject = playerGameObject;
         this.position = playerGameObject.transform.position;
         this.eulerAngles = playerGameObject.transform.eulerAngles;
         this.animationState = AnimationState.GetFromAnimator(playerGameObject.GetComponent<Animator>());
+        this.isPlaying = playerGameObject.GetComponent<AudioSource>().isPlaying;
+        this.volume = playerGameObject.GetComponent<AudioSource>().volume;
     }
     public ClientEntity(GameObject playerGameObject, Vector3 position, Vector3 eulerAngles)
     {
@@ -21,6 +25,8 @@ public class ClientEntity
         this.position = position;
         this.eulerAngles = eulerAngles;
         this.animationState = AnimationState.GetFromAnimator(playerGameObject.GetComponent<Animator>());
+        this.isPlaying = playerGameObject.GetComponent<AudioSource>().isPlaying;
+        this.volume = playerGameObject.GetComponent<AudioSource>().volume;
     }
 
     public ClientEntity()
@@ -36,6 +42,8 @@ public class ClientEntity
         buffer.PutFloat(transform.eulerAngles.x);
         buffer.PutFloat(transform.eulerAngles.y);
         buffer.PutFloat(transform.eulerAngles.z);
+        buffer.PutBit(isPlaying);
+        buffer.PutFloat(volume);
         animationState.Serialize(buffer);
     }
 
@@ -50,20 +58,11 @@ public class ClientEntity
         newPlayer.eulerAngles.x = buffer.GetFloat();
         newPlayer.eulerAngles.y = buffer.GetFloat();
         newPlayer.eulerAngles.z = buffer.GetFloat();
+        newPlayer.isPlaying = buffer.GetBit();
+        newPlayer.volume = buffer.GetFloat();
         newPlayer.animationState = AnimationState.Deserialize(buffer);
         
         return newPlayer;
-    }
-
-    public void Deserialize(BitBuffer buffer) {
-        position = new Vector3();
-        eulerAngles = new Vector3();
-        position.x = buffer.GetFloat();
-        position.y = buffer.GetFloat();
-        position.z = buffer.GetFloat();
-        eulerAngles.x = buffer.GetFloat();
-        eulerAngles.y = buffer.GetFloat();
-        eulerAngles.z = buffer.GetFloat();
     }
 
     public static void CreateInterpolatedAndApply(ClientEntity previous, ClientEntity next, GameObject gameObject, float t) {
@@ -71,14 +70,25 @@ public class ClientEntity
         clientEntity.position = Vector3.Lerp(previous.position, next.position, t);
         clientEntity.eulerAngles = Vector3.Lerp(previous.eulerAngles, next.eulerAngles, t);
         clientEntity.animationState = next.animationState;
-        clientEntity.Apply();
+        clientEntity.Apply(next.isPlaying, next.volume);
     }
 
-    public void Apply() {
+    public void Apply(bool isPlaying, float volume) {
         playerGameObject.GetComponent<Transform>().position = position;
         playerGameObject.GetComponent<Transform>().eulerAngles = eulerAngles;
         animationState.SetToAnimator(playerGameObject.GetComponent<Animator>());
+        AudioSource audioSource = playerGameObject.GetComponent<AudioSource>();
+        if (isPlaying && !audioSource.isPlaying)
+        {
+            audioSource.volume = volume;
+            audioSource.Play();
+        }
+        else
+        {
+            audioSource.Pause();
+        }
     }
+    
 
 
 }

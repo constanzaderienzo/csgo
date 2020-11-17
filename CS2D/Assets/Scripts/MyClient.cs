@@ -49,7 +49,8 @@ public class MyClient : MonoBehaviour{
     private bool paused;
     private string username;
     private Animator animator;
-
+    private AudioSource audioSource;
+    public AudioClip runningClip;
 
     private void Awake()
     {
@@ -72,6 +73,7 @@ public class MyClient : MonoBehaviour{
         queuedInputs = new List<Packet>();
         queuedActions = new List<Actions>();
         channel = new Channel(9000 + id);
+        //TODO put joinGameLoadAddress
         serverEndpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 9000);
         SendJoinToServer();
     }
@@ -427,27 +429,58 @@ public class MyClient : MonoBehaviour{
             }
         }
 
-        // if (action.ctrl)
-        // {
-        //     animator.SetFloat("Speed_f", 0f);
-        //     animator.SetBool("Crouch_b", true);
-        // }
-        // else if (direction.x > 0f && action.shift)
-        // {
-        //     animator.SetFloat("Speed_f", 0.2f);
-        // }
-        // else if (direction.x > 0f)
-        // {
-        //     animator.SetFloat("Speed_f", 0.6f);
-        // }
-        // else
-        // {
-        //     animator.SetBool("Crouch_b", false);
-        //     animator.SetFloat("Speed_f", 0f);
-        // }
-        
+        PlaySounds(direction != new Vector3(0f,0f,0f), action.ctrl, action.shift);
+        //Animate(direction != new Vector3(0f,0f,0f), action.ctrl, action.shift);
+
         direction.y -= gravity * Time.fixedDeltaTime;
         controller.Move(direction);
+    }
+
+    private void PlaySounds(bool moving, bool crouching, bool walking)
+    {
+        if (moving && crouching)
+        {
+            audioSource.volume = 0f;
+            if(!audioSource.isPlaying)
+                audioSource.Play();
+        }
+        else if (moving && walking)
+        {
+            audioSource.volume = 0.5f;
+            if(!audioSource.isPlaying)
+                audioSource.Play();        
+        }
+        else if (moving)
+        {
+            if(!audioSource.isPlaying)
+                audioSource.Play();
+        }
+        else
+        {
+            audioSource.Pause();
+        }
+    }
+    
+    private void Animate(bool moving, bool ctrl, bool shift)
+    {
+        if (ctrl)
+        {
+            animator.SetFloat("Speed_f", 0f);
+            animator.SetBool("Crouch_b", true);
+        }
+        else if (moving && shift)
+        {
+            animator.SetFloat("Speed_f", 0.2f);
+        }
+        else if (moving)
+        {
+            animator.SetFloat("Speed_f", 0.6f);
+        }
+        else
+        {
+            animator.SetBool("Crouch_b", false);
+            animator.SetFloat("Speed_f", 0f);
+        }
     }
     
     private void ResendIfExpired()
@@ -559,8 +592,8 @@ public class MyClient : MonoBehaviour{
 
         var calculatedPosition = gameObject.GetComponent<CharacterController>().transform.position;
         var actualPosition = players[id].GetComponent<CharacterController>().transform.position;
-        //Debug.Log("Actual " + actualPosition + " calculated " + calculatedPosition);
-        if (Vector3.Distance(calculatedPosition, actualPosition) >= epsilon) 
+
+        if (Vector3.Distance(calculatedPosition, actualPosition) >= epsilon && !playerInfo.isDead) 
         {
             Debug.Log("Had to reconcile");
             players[id].GetComponent<CharacterController>().transform.position = gameObject.GetComponent<CharacterController>().transform.position;
@@ -612,6 +645,7 @@ public class MyClient : MonoBehaviour{
             Debug.Log("In own");
             player = Instantiate(playerPrefab, position, rotation);
             animator = player.GetComponent<Animator>();
+            audioSource = player.GetComponent<AudioSource>();
         }
         else
         {
