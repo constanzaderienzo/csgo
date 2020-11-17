@@ -5058,7 +5058,7 @@ MonoBehaviour:
   id: 1
   gravity: 50
   exitPanel: {fileID: 1782819067}
-  runningClip: {fileID: 8300000, guid: 0abee1803e89b1d46b310d9f217055a0, type: 3}
+  shotClip: {fileID: 8300000, guid: ea2b0d763dfe1274c9198f97cb7192fa, type: 3}
 --- !u!1 &358206660 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 100018, guid: 16923535714c52840a3d4a2d263e5359,

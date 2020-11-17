@@ -50,7 +50,7 @@ public class MyClient : MonoBehaviour{
     private string username;
     private Animator animator;
     private AudioSource audioSource;
-    public AudioClip runningClip;
+    public AudioClip shotClip;
 
     private void Awake()
     {
@@ -199,6 +199,11 @@ public class MyClient : MonoBehaviour{
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
                     NewPlayerBroadcastEvent newPlayer = NewPlayerBroadcastEvent.Deserialize(packet.buffer);
                     AddClient(newPlayer.playerId, newPlayer.newPlayer);
+                    break;
+                case (int) PacketType.SHOTS:
+                    int shotId = packet.buffer.GetInt();
+                    int shooterId = packet.buffer.GetInt();
+                    ShotEvent(shotId, shooterId);
                     break;
                 case (int) PacketType.KILLFEED_EVENT:
                     string killedUsername = packet.buffer.GetString();
@@ -351,6 +356,8 @@ public class MyClient : MonoBehaviour{
             hitPlayerId = playerShoot.Shoot();
             animator.SetBool("Shoot_b", true);
             animator.Play("Handgun_Shoot");
+            players[id].gameObject.transform.GetComponentInChildren<MuzzleFlash>().Shoot();
+            AudioSource.PlayClipAtPoint(shotClip, players[id].transform.position);
         }
         else
         {
@@ -370,7 +377,7 @@ public class MyClient : MonoBehaviour{
         packet.buffer.Flush();
         SendReliablePacket(packet, 2f, PacketType.SHOTS);
     }
-   
+    
     private void ApplyClientInput(Actions action, CharacterController controller)
     {
         Vector3 direction = new Vector3();
@@ -658,6 +665,16 @@ public class MyClient : MonoBehaviour{
         player.name = playerId.ToString();
     }
 
+    private void ShotEvent(int shotId, int shooterId)
+    {
+        //players[shotId].GetComponentInChildren<BloodSpatter>().PlayBlood();
+        if (shooterId != id)
+        {
+            players[shooterId].GetComponentInChildren<MuzzleFlash>().Shoot();
+            AudioSource.PlayClipAtPoint(shotClip, players[shooterId].transform.position);
+        }
+         
+    }
     private void DeathEvent(string killedUsername, string sourceUsername)
     {
         if (sourceUsername == username)

@@ -318,6 +318,10 @@ public class MyServer : MonoBehaviour {
             clients[actionHitPlayerId].timeToRespawn = timeToRespawn;
             SendKillfeedEvent(clients[actionHitPlayerId].username, clients[sourceId].username);
         }
+        else
+        {
+            SendShotEvent(actionHitPlayerId, sourceId);
+        }
     }
 
     private void SendKillfeedEvent(string killedUsername, string sourceUsername)
@@ -333,6 +337,23 @@ public class MyServer : MonoBehaviour {
                 packet.buffer.PutString(sourceUsername);
                 packet.buffer.Flush();
                 //Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);
+                channel.Send(packet, clientEndpoint);
+            }
+        }
+    }
+    
+    private void SendShotEvent(int shotId, int shooterId)
+    {
+        foreach (var id in clients.Keys)
+        {
+            if (!clients[id].disconnected)
+            {
+                IPEndPoint clientEndpoint = clients[id].ipEndPoint;
+                var packet = Packet.Obtain();
+                packet.buffer.PutInt((int) PacketType.SHOTS);
+                packet.buffer.PutInt(shotId);
+                packet.buffer.PutInt(shooterId);
+                packet.buffer.Flush();
                 channel.Send(packet, clientEndpoint);
             }
         }
