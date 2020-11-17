@@ -359,7 +359,7 @@ public class MyClient : MonoBehaviour{
         {
             if (weapon.clip > 0 || weapon.name == "Pistol")
             {
-                hitPlayerId = playerShoot.Shoot();
+                hitPlayerId = playerShoot.Shoot(weapon);
                 animator.SetBool("Shoot_b", true);
                 players[id].gameObject.transform.GetComponentInChildren<MuzzleFlash>().Shoot();
                 weapon.Shoot();

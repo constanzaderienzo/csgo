@@ -16,11 +16,11 @@ public class WeaponHolsterServer : MonoBehaviour
 
     private void Awake()
     {
-        weapons.Add(new PlayerWeapon("Pistol", 20f, 50f));
-        weapons.Add(new PlayerWeapon("AK47", 20f, 50f));
-        weapons.Add(new PlayerWeapon("Shotgun", 20f, 50f));
-        weapons.Add(new PlayerWeapon("SniperRifle", 20f, 50f));
-        weapons.Add(new PlayerWeapon("MAC10", 20f, 50f));
+        weapons.Add(new PlayerWeapon("Pistol", 20f, 25f));
+        weapons.Add(new PlayerWeapon("AK47", 50f, 40f));
+        weapons.Add(new PlayerWeapon("Shotgun", 80f, 10f));
+        weapons.Add(new PlayerWeapon("SniperRifle", 100f, 200f));
+        weapons.Add(new PlayerWeapon("MAC10", 30f, 25f));
     }
 
     void Start()

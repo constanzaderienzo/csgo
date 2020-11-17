@@ -22,8 +22,9 @@ public class PlayerShoot : MonoBehaviour
         playerTransform = GetComponent<Transform>();
     }
 
-    public int Shoot()
+    public int Shoot(PlayerWeapon weapon)
     {
+        this.weapon = weapon;
         // Bit shift the index of the layer (8) to get a bit mask
         int layerMask = 1 << 8;
 
@@ -38,9 +39,7 @@ public class PlayerShoot : MonoBehaviour
         // Does the ray intersect any objects excluding the player layer
         if (Physics.Raycast(cam.transform.position, directionWithOffset, out hit, weapon.range, layerMask))
         {
-            Debug.DrawRay(cam.transform.position, directionWithOffset * hit.distance, Color.yellow);
-            //Debug.DrawRay(positionWithOffset, transform.TransformDirection(directionWithOffset) * hit.distance, Color.yellow);
-            Debug.Log("Did Hit " + hit.collider.gameObject.name );
+            //Debug.Log("Did Hit " + hit.collider.gameObject.name );
             int number;
             if (Int32.TryParse(hit.collider.gameObject.name, out number))
                 return number;
