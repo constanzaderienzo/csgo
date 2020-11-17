@@ -51,7 +51,8 @@ public class MyClient : MonoBehaviour{
     private Animator animator;
     private AudioSource audioSource;
     public AudioClip shotClip;
-
+    public GameObject bloodSpatter;
+    
     private void Awake()
     {
         Debug.Log("Awaking");
@@ -667,7 +668,12 @@ public class MyClient : MonoBehaviour{
 
     private void ShotEvent(int shotId, int shooterId)
     {
-        //players[shotId].GetComponentInChildren<BloodSpatter>().PlayBlood();
+        // We dont want to see our own blood spatter
+        if (shotId != id)
+        {
+            Vector3 position = players[shotId].transform.position + new Vector3(0f, 2.1f, 0f);
+            Instantiate(bloodSpatter, position , Quaternion.identity);
+        }
         if (shooterId != id)
         {
             players[shooterId].GetComponentInChildren<MuzzleFlash>().Shoot();

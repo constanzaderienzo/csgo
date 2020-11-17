@@ -5059,6 +5059,7 @@ MonoBehaviour:
   gravity: 50
   exitPanel: {fileID: 1782819067}
   shotClip: {fileID: 8300000, guid: ea2b0d763dfe1274c9198f97cb7192fa, type: 3}
+  bloodSpatter: {fileID: 194062, guid: 74c36fe03b1bafd45b7578d447af7f03, type: 3}
 --- !u!1 &358206660 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 100018, guid: 16923535714c52840a3d4a2d263e5359,
