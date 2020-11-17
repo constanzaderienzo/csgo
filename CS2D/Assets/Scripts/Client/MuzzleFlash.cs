@@ -8,6 +8,7 @@ public class MuzzleFlash : MonoBehaviour
     public void Shoot()
     {
         transform.GetComponent<Animation>().Play();
+        transform.GetComponent<AudioSource>().Play();
     }
     
 }

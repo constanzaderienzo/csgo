@@ -5058,7 +5058,7 @@ MonoBehaviour:
   id: 1
   gravity: 50
   exitPanel: {fileID: 1782819067}
-  shotClip: {fileID: 8300000, guid: ea2b0d763dfe1274c9198f97cb7192fa, type: 3}
+  emptyClip: {fileID: 8300000, guid: f74849e82a46086498d9ce9338238d52, type: 3}
   bloodSpatter: {fileID: 194062, guid: 74c36fe03b1bafd45b7578d447af7f03, type: 3}
 --- !u!1 &358206660 stripped
 GameObject:
@@ -23124,6 +23124,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 16.599976
+      objectReference: {fileID: 0}
+    - target: {fileID: 5544907744568977636, guid: 01aae7fcb99a8a84584605aa26df5379,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 01aae7fcb99a8a84584605aa26df5379, type: 3}

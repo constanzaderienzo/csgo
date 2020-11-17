@@ -10,6 +10,7 @@ public class ClientEntity
     public AnimationState animationState;
     public bool isPlaying;
     public float volume;
+    public string weapon;
 
     public ClientEntity(GameObject playerGameObject) {
         this.playerGameObject = playerGameObject;
@@ -18,6 +19,8 @@ public class ClientEntity
         this.animationState = AnimationState.GetFromAnimator(playerGameObject.GetComponent<Animator>());
         this.isPlaying = playerGameObject.GetComponent<AudioSource>().isPlaying;
         this.volume = playerGameObject.GetComponent<AudioSource>().volume;
+        this.weapon = playerGameObject.GetComponentInChildren<WeaponHolsterServer>().GetSelectedWeapon().name;
+
     }
     public ClientEntity(GameObject playerGameObject, Vector3 position, Vector3 eulerAngles)
     {
@@ -27,6 +30,7 @@ public class ClientEntity
         this.animationState = AnimationState.GetFromAnimator(playerGameObject.GetComponent<Animator>());
         this.isPlaying = playerGameObject.GetComponent<AudioSource>().isPlaying;
         this.volume = playerGameObject.GetComponent<AudioSource>().volume;
+        this.weapon = playerGameObject.GetComponentInChildren<WeaponHolsterServer>().GetSelectedWeapon().name;
     }
 
     public ClientEntity()
@@ -44,7 +48,9 @@ public class ClientEntity
         buffer.PutFloat(transform.eulerAngles.z);
         buffer.PutBit(isPlaying);
         buffer.PutFloat(volume);
+        buffer.PutString(weapon);
         animationState.Serialize(buffer);
+        
     }
 
     public static ClientEntity DeserializeInfo(BitBuffer buffer) {
@@ -60,6 +66,7 @@ public class ClientEntity
         newPlayer.eulerAngles.z = buffer.GetFloat();
         newPlayer.isPlaying = buffer.GetBit();
         newPlayer.volume = buffer.GetFloat();
+        newPlayer.weapon = buffer.GetString();
         newPlayer.animationState = AnimationState.Deserialize(buffer);
         
         return newPlayer;
@@ -70,6 +77,7 @@ public class ClientEntity
         clientEntity.position = Vector3.Lerp(previous.position, next.position, t);
         clientEntity.eulerAngles = Vector3.Lerp(previous.eulerAngles, next.eulerAngles, t);
         clientEntity.animationState = next.animationState;
+        clientEntity.weapon = next.weapon;
         clientEntity.Apply(next.isPlaying, next.volume);
     }
 
@@ -87,8 +95,7 @@ public class ClientEntity
         {
             audioSource.Pause();
         }
+        playerGameObject.GetComponentInChildren<WeaponHolsterServer>().SetWeapon(weapon);
     }
     
-
-
 }

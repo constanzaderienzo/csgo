@@ -197,11 +197,18 @@ public class MyServer : MonoBehaviour {
         int packetNumber = packet.buffer.GetInt();
         int clientId = packet.buffer.GetInt();
         int hitPlayer = packet.buffer.GetInt();
+        string weaponName = packet.buffer.GetString();
         float damageTaken = packet.buffer.GetFloat();
+        ChangeWeapon(weaponName, clientId);
         if(hitPlayer != -1)
             ApplyHit(hitPlayer, clientId, damageTaken);
         
         SendAck(packetNumber, clients[clientId].ipEndPoint, (int) PacketType.ACK, (int) PacketType.SHOTS);
+    }
+
+    private void ChangeWeapon(string weaponName, int clientId)
+    {
+        clientsGameObjects[clientId].GetComponentInChildren<WeaponHolsterServer>().SetWeapon(weaponName);
     }
 
     private void SendAck(int inputIndex, IPEndPoint clientEndpoint, int ackType, int packetType ) {

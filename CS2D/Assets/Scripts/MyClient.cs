@@ -50,8 +50,9 @@ public class MyClient : MonoBehaviour{
     private string username;
     private Animator animator;
     private AudioSource audioSource;
-    public AudioClip shotClip;
+    public AudioClip emptyClip;
     public GameObject bloodSpatter;
+    private int hitPlayerId = -1;
     
     private void Awake()
     {
@@ -348,17 +349,31 @@ public class MyClient : MonoBehaviour{
         packet.buffer.Flush();
         queuedInputs.Add(packet);
     }
-
+    
     private void SendShots()
     {
-        int hitPlayerId = -1;
+        hitPlayerId = -1;
+        PlayerWeapon weapon = players[id].gameObject.transform.GetComponentInChildren<WeaponHolster>().GetSelectedWeapon();
+        ChangeAnimation(weapon);
         if (Input.GetMouseButtonDown(0) && !paused)
         {
-            hitPlayerId = playerShoot.Shoot();
-            animator.SetBool("Shoot_b", true);
-            animator.Play("Handgun_Shoot");
-            players[id].gameObject.transform.GetComponentInChildren<MuzzleFlash>().Shoot();
-            AudioSource.PlayClipAtPoint(shotClip, players[id].transform.position);
+            if (weapon.clip > 0 || weapon.name == "Pistol")
+            {
+                hitPlayerId = playerShoot.Shoot();
+                animator.SetBool("Shoot_b", true);
+                players[id].gameObject.transform.GetComponentInChildren<MuzzleFlash>().Shoot();
+                weapon.Shoot();
+            }
+            else if (weapon.ammo > 0)
+            {
+                weapon.Reload();
+                if(weapon.clip > 0)
+                    StartCoroutine(ReloadThenShoot(weapon));
+            }
+            else
+            {
+                AudioSource.PlayClipAtPoint(emptyClip, players[id].transform.position);
+            }
         }
         else
         {
@@ -367,16 +382,48 @@ public class MyClient : MonoBehaviour{
 
         shotsPacketIndex++;
 
-        float damage = 10f;
-        
         var packet = Packet.Obtain();
         packet.buffer.PutInt((int) PacketType.SHOTS);
         packet.buffer.PutInt(shotsPacketIndex);
         packet.buffer.PutInt(id);
         packet.buffer.PutInt(hitPlayerId);
-        packet.buffer.PutFloat(damage);
+        packet.buffer.PutString(weapon.name);
+        packet.buffer.PutFloat(weapon.damage);
         packet.buffer.Flush();
         SendReliablePacket(packet, 2f, PacketType.SHOTS);
+    }
+
+    private void ChangeAnimation(PlayerWeapon weapon)
+    {
+        int weaponType = 0; 
+        switch (weapon.name)
+        {
+            case "Pistol":
+                weaponType = 1;
+                break;
+            case "AK47":
+                weaponType = 2; 
+                break;
+            case "Shotgun":
+                weaponType = 4;
+                break;
+            case "SniperRifle":
+                weaponType = 5;
+                break;
+            case "MAC10":
+                weaponType = 7;
+                break;
+        }
+        if(animator.GetInteger("WeaponType_int") != weaponType)
+            animator.SetInteger("WeaponType_int", weaponType);
+        
+    }
+    
+    private IEnumerator ReloadThenShoot(PlayerWeapon weapon)
+    {
+        animator.SetBool("Reload_b", true);
+        yield return new WaitForSeconds(1.567f);
+        animator.SetBool("Reload_b", false);
     }
     
     private void ApplyClientInput(Actions action, CharacterController controller)
@@ -583,7 +630,7 @@ public class MyClient : MonoBehaviour{
 
         HandlePlayerRespawn(playerInfo);
         PlayerInfoUpdate(playerInfo);
-        DebugConsoleUpdate(playerEntity);
+        //DebugConsoleUpdate(playerEntity);
         
         GameObject gameObject = new GameObject();
         gameObject.AddComponent<CharacterController>();
@@ -677,10 +724,10 @@ public class MyClient : MonoBehaviour{
         if (shooterId != id)
         {
             players[shooterId].GetComponentInChildren<MuzzleFlash>().Shoot();
-            AudioSource.PlayClipAtPoint(shotClip, players[shooterId].transform.position);
         }
          
     }
+    
     private void DeathEvent(string killedUsername, string sourceUsername)
     {
         if (sourceUsername == username)
