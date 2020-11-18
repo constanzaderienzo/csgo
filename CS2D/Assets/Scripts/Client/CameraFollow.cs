@@ -9,35 +9,22 @@
      private float xRotation = 0f;
      [SerializeField]
      private Camera camera;
+     private Quaternion _cameraRotation;
  
      // Update is called once per frame
      private void Start()
      {
          Cursor.lockState = CursorLockMode.Locked;
          playerTransform = GetComponent<Transform>();
+         if (camera != null) 
+             _cameraRotation = camera.transform.rotation;
      }
 
      void Update()
      {
         MoveView();
      }
-
-     void Extra()
-     {
-         if(playerTransform != null)
-         {
-             float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.fixedDeltaTime;
-             float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.fixedDeltaTime;
-             
-             xRotation -= mouseY;
-             xRotation = Mathf.Clamp(xRotation, -90f, 90f);
-             transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
-             playerTransform.Rotate(Vector3.up * mouseX);
-             transform.position = playerTransform.position  + new Vector3(0,2.1f,0); 
-             transform.rotation = playerTransform.rotation;
-
-         }
-     }
+     
      void MoveView()
      {
          float _yRot = Input.GetAxis("Mouse X");
@@ -50,15 +37,30 @@
          _xRot = -_xRot;
          _xRot = Mathf.Clamp(_xRot, -90f, 90f);
          
-         Vector3 _cameraRotation = new Vector3(_xRot, 0f, 0f) * (mouseSensitivity * Time.fixedDeltaTime);
+         _cameraRotation *= Quaternion.Euler(_xRot, 0f, 0f);
+         _cameraRotation = LockCameraMovement(_cameraRotation);
+
          if (camera != null)
          {
-             camera.transform.Rotate(_cameraRotation);
+             camera.transform.localRotation = _cameraRotation;
+             //camera.transform.Rotate(_cameraRotation);
          }
      }
- 
-     public void SetTarget(Transform target)
+     
+     private Quaternion LockCameraMovement(Quaternion q)
      {
-         playerTransform = target;
+         q.x /= q.w;
+         q.y /= q.w;
+         q.z /= q.w;
+         q.w = 1.0f;
+ 
+         var angleX = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.x);
+ 
+         angleX = Mathf.Clamp(angleX, -90f, 90f);
+ 
+         q.x = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleX);
+ 
+         return q;
      }
+     
  }

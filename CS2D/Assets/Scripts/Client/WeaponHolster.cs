@@ -38,38 +38,7 @@ public class WeaponHolster : MonoBehaviour
             i++;
         }
     }
-
-    public void SetWeapon(string weaponName)
-    {
-        int previousSelectedWeapon = selectedWeapon;
-        switch (weaponName)
-        {
-            case "Pistol":
-                selectedWeapon = 0;
-                break;
-            case "AK47":
-                selectedWeapon = 1;
-                break;
-            case "Shotgun":
-                selectedWeapon = 2;
-                break;
-            case "SniperRifle":
-                selectedWeapon = 3;
-                break;
-            case "MAC10":
-                selectedWeapon = 4;
-                break;
-        }
-        if (previousSelectedWeapon != selectedWeapon && selectedWeapon < weapons.Count) 
-        {
-            SelectWeapon();
-        }
-        else
-        {
-            selectedWeapon = previousSelectedWeapon;
-        }
-    }
-
+    
     public PlayerWeapon GetSelectedWeapon()
     {
         return weapons[selectedWeapon];
