@@ -235,15 +235,14 @@ public class ClientCS : MonoBehaviour{
                     scoreboard.SetActive(true);
                     break;
                 case (int) PacketType.ROUND_WON:
+                    Debug.Log("Round won ");
                     int team = packet.buffer.GetInt();
-                    int score = packet.buffer.GetInt();
-                    if (team == 0 && scoreboard.activeSelf)
+                    int csScoreTotal = packet.buffer.GetInt();
+                    int terrorScoreTotal = packet.buffer.GetInt();
+                     if (scoreboard.activeSelf)
                     {
-                        csScore.text = score.ToString();
-                    }
-                    else if (scoreboard.activeSelf)
-                    {
-                        terrorScore.text = score.ToString();
+                        csScore.text = csScoreTotal.ToString();
+                        terrorScore.text = terrorScoreTotal.ToString();
                     }
                     break;
                 default:

@@ -42,9 +42,9 @@ public class ServerCS : MonoBehaviour {
         counterterrorists = new List<int>();
         terrorists = new List<int>();
         queuedPlayers = new List<int>();
-        round = 1;
+        round = 0;
         csScore = 0;
-        terrorScore = 1;
+        terrorScore = 0;
         isPlaying = false;
     }
 
@@ -110,9 +110,12 @@ public class ServerCS : MonoBehaviour {
         if (accum >= sendRate) {
             if (clients.Count >= 2)
             {
-                isPlaying = true;
-                leftCounterAlive = counterterrorists.Count;
-                leftTerrorAlive = terrorists.Count;
+                if (!isPlaying && round == 0)
+                {
+                    leftCounterAlive = counterterrorists.Count;
+                    leftTerrorAlive = terrorists.Count;
+                    isPlaying = true;
+                }
                 SendSnapshot();
                 accum -= sendRate;
             }
@@ -350,18 +353,17 @@ public class ServerCS : MonoBehaviour {
                 if (leftCounterAlive == 0)
                 {
                     terrorScore++;
-                    //SendWonEvent(1);
-                    StartNewRound();
+                    StartNewRound(1);
                 }
             }
             else
             {
                 leftTerrorAlive--;
+                Debug.Log("Terror " + leftTerrorAlive);
                 if (leftTerrorAlive == 0)
                 {
-                    csScore++; 
-                    //SendWonEvent(0);
-                    StartNewRound();
+                    csScore++;
+                    StartNewRound(0);
                 }
             }
             
@@ -372,10 +374,10 @@ public class ServerCS : MonoBehaviour {
         }
     }
 
-    private void StartNewRound()
+    private void StartNewRound(int team)
     {
-        Debug.Log("Starting new round");
         isPlaying = false;
+        round++; 
         Debug.Log("Queued " + queuedPlayers.Count);
         foreach (var clientId in queuedPlayers)
         {
@@ -384,8 +386,8 @@ public class ServerCS : MonoBehaviour {
             SendWaitOver(clientId);
         }
         queuedPlayers.Clear();
-
         RespawnDeadClients();
+        //SendWonEvent(team);
         leftCounterAlive = counterterrorists.Count;
         leftTerrorAlive = terrorists.Count;
         isPlaying = true;
@@ -408,9 +410,9 @@ public class ServerCS : MonoBehaviour {
                 IPEndPoint clientEndpoint = clients[id].ipEndPoint;
                 var packet = Packet.Obtain();
                 packet.buffer.PutInt((int) PacketType.ROUND_WON);
-                int score = team == 0 ? csScore : terrorScore;
                 packet.buffer.PutInt(team);
-                packet.buffer.PutInt(score);
+                packet.buffer.PutInt(csScore);
+                packet.buffer.PutInt(terrorScore);
                 packet.buffer.Flush();
                 channel.Send(packet, clientEndpoint);
             }
