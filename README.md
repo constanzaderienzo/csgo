@@ -16,7 +16,7 @@
 
 ### Game
 The game has two modes: a 'team' mode and a deathmatch mode. 
-To begin one must run a server selecting either mode. Once the server is up and running a client can be run, specifying the address and a username (which must be unique, if its taken the server will reply specifying that).
+To begin one must run a server selecting either mode. Once the server is up and running a client can be run, specifying the address and a username (which must be unique, if its taken the server will reply specifying that). If the server address is incorrect or something wrong happened, an error will also appear indicating that it was unable to connect.
 
 Each player starts with the following weapons which vary in **damage** and **range**:
 |  Weapon       |  Damage       | Range |
