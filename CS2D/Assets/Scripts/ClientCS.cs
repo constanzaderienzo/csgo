@@ -285,6 +285,7 @@ public class ClientCS : MonoBehaviour{
         ScoreTable terrorScoreTable = GameObject.Find("TerrorTable").GetComponent<ScoreTable>();
         terrorScoreTable.SetUp(scoreboard.terrorsString);
     }
+    
     private IEnumerator GameEnded()
     {
         yield return new WaitForSeconds(2f);

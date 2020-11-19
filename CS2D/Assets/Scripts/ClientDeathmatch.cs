@@ -53,11 +53,13 @@ public class ClientDeathmatch : MonoBehaviour{
     public AudioClip emptyClip;
     public GameObject bloodSpatter;
     private int hitPlayerId = -1;
+    private int delay;
     
     private void Awake()
     {
         Application.targetFrameRate = 60;
         Debug.Log("Awaking");
+        delay = 0;
         JoinGameLoad joinGameLoad = GameObject.Find("NetworkManager").GetComponent<JoinGameLoad>();
         deadScreen = GameObject.Find("Died");
         deadScreen.SetActive(false);
@@ -171,9 +173,22 @@ public class ClientDeathmatch : MonoBehaviour{
             }
         }
 
+        Lag();
         
         ProcessPacket();
 
+    }
+
+    private void Lag()
+    {
+        if (Input.GetKeyDown(KeyCode.L))
+        {
+            delay++;
+        }
+        else if (Input.GetKeyDown(KeyCode.K))
+        {
+            delay = delay-- > 0 ? delay-- : 0;
+        }
     }
     
     private void ProcessPacket()
@@ -291,7 +306,22 @@ public class ClientDeathmatch : MonoBehaviour{
         {
             shotsToSend.Add(new ReliablePacket(packet, shotsPacketIndex, timeout, packetsTime, id));
         }
-        
+
+        if (delay > 0)
+        {
+            StartCoroutine(AddLag(packet));
+            
+        }
+        else
+        {
+            channel.Send(packet, serverEndpoint);
+        }
+    }
+
+    private IEnumerator AddLag(Packet packet)
+    {
+        Debug.Log("Waiting for delay");
+        yield return new WaitForSeconds	(delay);
         channel.Send(packet, serverEndpoint);
     }
     
