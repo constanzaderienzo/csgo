@@ -35,7 +35,7 @@ public class ServerCS : MonoBehaviour {
     private void Awake()
     {
         Debug.Log("CS");
-
+        Application.targetFrameRate = 60;
         channel = new Channel(9000);
         pps = 60;
         clientsGameObjects = new Dictionary<int, GameObject>();
