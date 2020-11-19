@@ -10,5 +10,7 @@
         PLAYER_JOINED_GAME_ACK = 6,
         PLAYER_DISCONNECT = 7,
         HEALTH = 8,
-        SHOTS = 9
+        SHOTS = 9,
+        WAIT_OVER = 10,
+        ROUND_WON = 11
     }

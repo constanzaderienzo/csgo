@@ -57,6 +57,7 @@ public class ClientCS : MonoBehaviour{
     public GameObject bloodSpatter;
     private int hitPlayerId = -1;
     private bool waiting;
+    private Text csScore, terrorScore;
     
     private void Awake()
     {
@@ -67,6 +68,8 @@ public class ClientCS : MonoBehaviour{
         waitingScreen = GameObject.Find("Waiting");
         waitingScreen.SetActive(false);
         scoreboard = GameObject.Find("Scoreboard");
+        csScore = GameObject.Find("CsScore").GetComponent<Text>();
+        terrorScore = GameObject.Find("TerrorScore").GetComponent<Text>();
         scoreboard.SetActive(false);
         SetUsername(joinGameLoad.username);
         SetId(joinGameLoad.id);
@@ -76,7 +79,7 @@ public class ClientCS : MonoBehaviour{
         inputIndex = 0;
         lastRemoved = 0;
         paused = false;
-        waiting = false;
+        waiting = true;
         waitingTime = 0;
         clientActions = new List<Actions>();
         interpolationBuffer = new List<Snapshot>();
@@ -120,7 +123,7 @@ public class ClientCS : MonoBehaviour{
 
     public void FixedUpdate()
     {
-        if (hasReceievedAck)
+        if (hasReceievedAck && !waiting)
         {
             //Muestrea
             TakeClientInput();
@@ -157,7 +160,7 @@ public class ClientCS : MonoBehaviour{
     {
         time += Time.fixedDeltaTime;
         ResendPlayerJoinedIfExpired();
-        if (hasReceievedAck) 
+        if (hasReceievedAck && !waiting) 
         {
             packetsTime += Time.fixedDeltaTime;
             ResendIfExpired();         
@@ -179,35 +182,9 @@ public class ClientCS : MonoBehaviour{
                 exitPanel.SetActive(false);
             }
         }
-
-        if (players.Count < 2)
-        {
-            waiting = true;
-            Cursor.lockState = CursorLockMode.None;
-            InvokeRepeating("AddToWaitingTime", 1, 1);
-            DisplayWaitTime();
-        }
-        else
-        {
-            waiting = false;
-            waitingScreen.SetActive(false);
-            Cursor.lockState = CursorLockMode.Locked;
-            scoreboard.SetActive(true);
-        }
+        
         ProcessPacket();
 
-    }
-
-    private void AddToWaitingTime()
-    {
-        waitingTime++;
-    }
-
-    private void DisplayWaitTime()
-    {
-        waitingScreen.SetActive(true);
-        Text waitTimeText = GameObject.Find("WaitingTimerText").GetComponent<Text>();
-        waitTimeText.text = waitingTime.ToString();
     }
     
     private void ProcessPacket()
@@ -219,7 +196,7 @@ public class ClientCS : MonoBehaviour{
             switch(packetType)
             {
                 case (int) PacketType.SNAPSHOT:
-                    if(hasReceievedAck)
+                    if(hasReceievedAck && !waiting)
                         GetSnapshot(packet);
                     break;
                 case (int) PacketType.ACK:
@@ -227,6 +204,9 @@ public class ClientCS : MonoBehaviour{
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME_ACK:
                     id = packet.buffer.GetInt();
+                    waiting = packet.buffer.GetBit();
+                    waitingScreen.SetActive(waiting);
+                    scoreboard.SetActive(!waiting);
                     sentJoinEvent = null;
                     break;
                 case (int) PacketType.PLAYER_JOINED_GAME:
@@ -240,12 +220,31 @@ public class ClientCS : MonoBehaviour{
                 case (int) PacketType.SHOTS:
                     int shotId = packet.buffer.GetInt();
                     int shooterId = packet.buffer.GetInt();
-                    ShotEvent(shotId, shooterId);
+                    if(hasReceievedAck)
+                        ShotEvent(shotId, shooterId);
                     break;
                 case (int) PacketType.KILLFEED_EVENT:
                     string killedUsername = packet.buffer.GetString();
                     string sourceUsername = packet.buffer.GetString();
-                    DeathEvent(killedUsername, sourceUsername);
+                    if(hasReceievedAck)
+                        DeathEvent(killedUsername, sourceUsername);
+                    break;
+                case (int) PacketType.WAIT_OVER:
+                    waiting = false;
+                    waitingScreen.SetActive(false);
+                    scoreboard.SetActive(true);
+                    break;
+                case (int) PacketType.ROUND_WON:
+                    int team = packet.buffer.GetInt();
+                    int score = packet.buffer.GetInt();
+                    if (team == 0 && scoreboard.activeSelf)
+                    {
+                        csScore.text = score.ToString();
+                    }
+                    else if (scoreboard.activeSelf)
+                    {
+                        terrorScore.text = score.ToString();
+                    }
                     break;
                 default:
                     Debug.Log("Unrecognized type in client" + packetType);
@@ -371,15 +370,6 @@ public class ClientCS : MonoBehaviour{
             AnimationState.GetFromAnimator(animator)
         );
 
-        if (waiting)
-        {
-            action = new Actions(
-                id, 
-                inputIndex,
-                false, false, false, false, false, false, false, 
-                players[id].transform.eulerAngles, 
-                AnimationState.GetFromAnimator(animator));
-        }
 
         queuedActions.Add(action);
         clientActions.Add(action);
@@ -675,6 +665,7 @@ public class ClientCS : MonoBehaviour{
 
         HandlePlayerRespawn(playerInfo);
         PlayerInfoUpdate(playerInfo);
+        //waitingScreen.SetActive(playerInfo.waiting);
         //DebugConsoleUpdate(playerEntity);
         
         GameObject gameObject = new GameObject();

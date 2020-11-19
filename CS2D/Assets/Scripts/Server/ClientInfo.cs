@@ -9,6 +9,7 @@ public class ClientInfo
     public bool isDead;
     public float timeToRespawn;
     public bool disconnected;
+    public bool waiting;
     public int packetNumber;
     /// <summary>
     /// -1 = N/A
@@ -26,6 +27,7 @@ public class ClientInfo
         disconnected = false;
         packetNumber = 1;
         this.team = team;
+        waiting = false;
     }
 
     public ClientInfo(ClientInfo clientInfo)
@@ -37,6 +39,7 @@ public class ClientInfo
         disconnected = clientInfo.disconnected;
         packetNumber = clientInfo.packetNumber;
         team = clientInfo.team;
+        waiting = clientInfo.waiting;
     }
     public ClientInfo(){}
 
@@ -50,6 +53,7 @@ public class ClientInfo
         buffer.PutBit(disconnected);
         buffer.PutInt(packetNumber);
         buffer.PutInt(team);
+        buffer.PutBit(waiting);
     }
 
     public static ClientInfo DeserializeInfo(BitBuffer buffer)
@@ -62,6 +66,7 @@ public class ClientInfo
         playerInfo.disconnected = buffer.GetBit();
         playerInfo.packetNumber = buffer.GetInt();
         playerInfo.team = buffer.GetInt();
+        playerInfo.waiting = buffer.GetBit();
         return playerInfo;
     }
 }

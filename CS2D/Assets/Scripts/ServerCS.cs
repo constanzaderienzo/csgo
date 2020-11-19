@@ -24,7 +24,12 @@ public class ServerCS : MonoBehaviour {
     private Dictionary<Actions, GameObject> queuedClientInputs;
     private List<int> counterterrorists;
     private List<int> terrorists;
+    private int leftCounterAlive, leftTerrorAlive;
+    private List<int> queuedPlayers;
     private float timeToRespawn = 200f;
+    private int round;
+    private bool isPlaying;
+    private int csScore, terrorScore;
     
     private void Awake()
     {
@@ -36,12 +41,16 @@ public class ServerCS : MonoBehaviour {
         queuedClientInputs = new Dictionary<Actions, GameObject>();
         counterterrorists = new List<int>();
         terrorists = new List<int>();
+        queuedPlayers = new List<int>();
+        round = 1;
+        csScore = 0;
+        terrorScore = 1;
+        isPlaying = false;
     }
 
     public void FixedUpdate()
     {
         ApplyClientInputs();
-        RespawnDeadClients();
     }
 
     private void RespawnDeadClients()
@@ -51,21 +60,14 @@ public class ServerCS : MonoBehaviour {
             ClientInfo clientInfo = entry.Value;
             if (clientInfo.isDead)
             {
-                if (clientInfo.timeToRespawn <= 0f)
-                {
-                    RespawnPlayer(entry.Key);
-                }
-                else
-                {
-                    clientInfo.timeToRespawn -= 1f;
-                }
+                RespawnPlayer(entry.Key);
             }
         }
     }
 
     private void RespawnPlayer(int clientId)
     {
-        //Debug.Log("Respawning player");
+        Debug.Log("Respawning player");
         clientsGameObjects[clientId].transform.position = RandomSpawnPosition();
         clientsGameObjects[clientId].SetActive(true);
         clientsGameObjects[clientId].GetComponent<CharacterController>().enabled = true;
@@ -108,9 +110,12 @@ public class ServerCS : MonoBehaviour {
         if (accum >= sendRate) {
             if (clients.Count >= 2)
             {
+                isPlaying = true;
+                leftCounterAlive = counterterrorists.Count;
+                leftTerrorAlive = terrorists.Count;
                 SendSnapshot();
+                accum -= sendRate;
             }
-            accum -= sendRate;
         }
     }
 
@@ -176,6 +181,14 @@ public class ServerCS : MonoBehaviour {
         int clientId = packet.buffer.GetInt();
         clients[clientId].disconnected = true;
         clientsGameObjects[clientId].SetActive(false);
+        if (counterterrorists.Contains(clientId))
+        {
+            counterterrorists.Remove(clientId);
+        }
+        else
+        {
+            terrorists.Remove(clientId);
+        }
     }
 
     private void ServerReceivesClientInput(Packet packet){
@@ -189,7 +202,7 @@ public class ServerCS : MonoBehaviour {
             action.DeserializeInput(packet.buffer);
             clientId = action.id;
             client = clients[clientId];
-            if(action.inputIndex > client.inputId) {
+            if(action.inputIndex > client.inputId && !client.waiting) {
                 client.inputId = action.inputIndex;
                 queuedClientInputs.Add(action, clientsGameObjects[action.id]); 
             }
@@ -207,7 +220,7 @@ public class ServerCS : MonoBehaviour {
         string weaponName = packet.buffer.GetString();
         float damageTaken = packet.buffer.GetFloat();
         ChangeWeapon(weaponName, clientId);
-        if(hitPlayer != -1)
+        if(hitPlayer != -1 && !clients[clientId].waiting)
             ApplyHit(hitPlayer, clientId, damageTaken);
         
         SendAck(packetNumber, clients[clientId].ipEndPoint, (int) PacketType.ACK, (int) PacketType.SHOTS);
@@ -330,10 +343,77 @@ public class ServerCS : MonoBehaviour {
             clientsGameObjects[actionHitPlayerId].GetComponent<CharacterController>().enabled = false;
             clients[actionHitPlayerId].timeToRespawn = timeToRespawn;
             SendKillfeedEvent(clients[actionHitPlayerId].username, clients[sourceId].username);
+            
+            if (counterterrorists.Contains(actionHitPlayerId))
+            {
+                leftCounterAlive--;
+                if (leftCounterAlive == 0)
+                {
+                    terrorScore++;
+                    //SendWonEvent(1);
+                    StartNewRound();
+                }
+            }
+            else
+            {
+                leftTerrorAlive--;
+                if (leftTerrorAlive == 0)
+                {
+                    csScore++; 
+                    //SendWonEvent(0);
+                    StartNewRound();
+                }
+            }
+            
         }
         else
         {
             SendShotEvent(actionHitPlayerId, sourceId);
+        }
+    }
+
+    private void StartNewRound()
+    {
+        Debug.Log("Starting new round");
+        isPlaying = false;
+        Debug.Log("Queued " + queuedPlayers.Count);
+        foreach (var clientId in queuedPlayers)
+        {
+            AddPlayerToWorld(clientId);
+            clients[clientId].waiting = false;
+            SendWaitOver(clientId);
+        }
+        queuedPlayers.Clear();
+
+        RespawnDeadClients();
+        leftCounterAlive = counterterrorists.Count;
+        leftTerrorAlive = terrorists.Count;
+        isPlaying = true;
+    }
+
+    private void SendWaitOver(int clientId)
+    {
+        var packet = Packet.Obtain();
+        packet.buffer.PutInt((int) PacketType.WAIT_OVER);
+        packet.buffer.Flush();
+        channel.Send(packet, clients[clientId].ipEndPoint);
+    }
+
+    private void SendWonEvent(int team)
+    {
+        foreach (var id in clients.Keys)
+        {
+            if (!clients[id].disconnected)
+            {
+                IPEndPoint clientEndpoint = clients[id].ipEndPoint;
+                var packet = Packet.Obtain();
+                packet.buffer.PutInt((int) PacketType.ROUND_WON);
+                int score = team == 0 ? csScore : terrorScore;
+                packet.buffer.PutInt(team);
+                packet.buffer.PutInt(score);
+                packet.buffer.Flush();
+                channel.Send(packet, clientEndpoint);
+            }
         }
     }
 
@@ -377,7 +457,7 @@ public class ServerCS : MonoBehaviour {
         WorldInfo currentWorldInfo = GenerateCurrentWorldInfo();
         foreach (var clientId in clients.Keys)
         {
-            if (!clients[clientId].disconnected) 
+            if (!clients[clientId].disconnected && !clients[clientId].waiting) 
             {
                 //serialize
                 var packet = Packet.Obtain();
@@ -413,38 +493,54 @@ public class ServerCS : MonoBehaviour {
         IPEndPoint endPoint = packet.fromEndPoint;
         Debug.Log("Client with id " + clientId + " and endpoint " + endPoint.Address + endPoint.Port + " was added");
         ClientInfo clientInfo;
-        int team;
         if (counterterrorists.Count < terrorists.Count)
         {
-            team = 0;
             clientInfo = new ClientInfo(clientUsername, endPoint, 0);
             counterterrorists.Add(clientId);
         }
         else
         {
-            team = 1;
             clientInfo = new ClientInfo(clientUsername, endPoint, 1);
             terrorists.Add(clientId);
         }
 
         clients[clientId] = clientInfo;
-        SendAck(clientId, endPoint, (int)PacketType.PLAYER_JOINED_GAME_ACK, (int) PacketType.PLAYER_JOINED_GAME_ACK);
-        AddPlayerToWorld(clientId, team);
+        SendJoinedAck(clientId, endPoint, (int)PacketType.PLAYER_JOINED_GAME_ACK, isPlaying);
+        if (!isPlaying)
+        {
+            AddPlayerToWorld(clientId);
+            
+        }
+        else
+        {
+            queuedPlayers.Add(clientId);
+            clients[clientId].waiting = isPlaying;
+        }
+
+    }
+    
+    private void SendJoinedAck(int inputIndex, IPEndPoint clientEndpoint, int ackType, bool waiting ) {
+        var packet = Packet.Obtain();
+        packet.buffer.PutInt(ackType);
+        packet.buffer.PutInt(inputIndex);
+        packet.buffer.PutBit(waiting);
+        packet.buffer.Flush();
+        channel.Send(packet, clientEndpoint);
     }
 
-    private void AddPlayerToWorld(int clientId, int team)
+    private void AddPlayerToWorld(int clientId)
     {
         float xPosition = Random.Range(-4f, 4f);
         float yPosition = 0f;
         float zPosition = Random.Range(-4f, 4f);
         Vector3 position = new Vector3(xPosition, yPosition, zPosition);
         Quaternion rotation = Quaternion.Euler(Vector3.zero);
-        GameObject serverPrefab = team == 1 ?  terroristPrefab : counterPrefab; 
+        GameObject serverPrefab = clients[clientId].team == 1 ?  terroristPrefab : counterPrefab; 
         GameObject newClient = Instantiate(serverPrefab, position, rotation);
         clientsGameObjects[clientId] = newClient;
-       
+
         //Send Broadcast
-        BroadcastNewPlayer(clientId, position, rotation.eulerAngles, team);
+        BroadcastNewPlayer(clientId, position, rotation.eulerAngles, clients[clientId].team);
         
         //Send world info so the player can do initial set up
         SendWorldStatusToNewPlayer(clientId);
