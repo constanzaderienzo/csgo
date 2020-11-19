@@ -55,15 +55,11 @@ public class ServerCS : MonoBehaviour {
         ApplyClientInputs();
     }
 
-    private void RespawnDeadClients()
+    private void RespawnClients()
     {
         foreach (var entry in clients)
         {
-            ClientInfo clientInfo = entry.Value;
-            if (clientInfo.isDead)
-            {
-                RespawnPlayer(entry.Key);
-            }
+            RespawnPlayer(entry.Key);
         }
     }
 
@@ -98,7 +94,7 @@ public class ServerCS : MonoBehaviour {
 
         }
         
-        queuedClientInputs = new Dictionary<Actions, GameObject>();
+        queuedClientInputs.Clear();
     }
 
     public void Update() {
@@ -379,18 +375,26 @@ public class ServerCS : MonoBehaviour {
     {
         isPlaying = false;
         round++;
-        foreach (var clientId in queuedPlayers)
+        if (csScore == 2 || terrorScore == 2 )
         {
-            AddPlayerToWorld(clientId);
-            clients[clientId].waiting = false;
-            SendWaitOver(clientId);
+            SendGameWonEvent(team);
+            DisconnectClients();
         }
-        queuedPlayers.Clear();
-        RespawnDeadClients();
-        SendWonEvent(team);
-        leftCounterAlive = counterterrorists.Count;
-        leftTerrorAlive = terrorists.Count;
-        isPlaying = true;
+        else
+        {
+            foreach (var clientId in queuedPlayers)
+            {
+                AddPlayerToWorld(clientId);
+                clients[clientId].waiting = false;
+                SendWaitOver(clientId);
+            }
+            queuedPlayers.Clear();
+            RespawnClients();
+            SendRoundWonEvent();
+            leftCounterAlive = counterterrorists.Count;
+            leftTerrorAlive = terrorists.Count;
+            isPlaying = true;
+        }
     }
 
     private void SendWaitOver(int clientId)
@@ -401,7 +405,7 @@ public class ServerCS : MonoBehaviour {
         channel.Send(packet, clients[clientId].ipEndPoint);
     }
 
-    private void SendWonEvent(int team)
+    private void SendRoundWonEvent()
     {
         foreach (var id in clients.Keys)
         {
@@ -410,9 +414,39 @@ public class ServerCS : MonoBehaviour {
                 IPEndPoint clientEndpoint = clients[id].ipEndPoint;
                 var packet = Packet.Obtain();
                 packet.buffer.PutInt((int) PacketType.ROUND_WON);
-                packet.buffer.PutInt(team);
                 packet.buffer.PutInt(csScore);
                 packet.buffer.PutInt(terrorScore);
+                packet.buffer.Flush();
+                channel.Send(packet, clientEndpoint);
+            }
+        }
+    }
+
+    private void DisconnectClients()
+    {
+        clientsGameObjects.Clear();
+        clients.Clear();
+        newPlayerBroadcastEvents.Clear();
+        queuedClientInputs.Clear();
+        counterterrorists.Clear();
+        terrorists.Clear();
+        queuedPlayers.Clear();
+        round = 0;
+        csScore = 0;
+        terrorScore = 0;
+        isPlaying = false;
+    }
+    
+    private void SendGameWonEvent(int team)
+    {
+        foreach (var id in clients.Keys)
+        {
+            if (!clients[id].disconnected)
+            {
+                IPEndPoint clientEndpoint = clients[id].ipEndPoint;
+                var packet = Packet.Obtain();
+                packet.buffer.PutInt((int) PacketType.GAME_WON);
+                packet.buffer.PutInt(team);
                 packet.buffer.Flush();
                 channel.Send(packet, clientEndpoint);
             }

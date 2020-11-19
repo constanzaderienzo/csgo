@@ -30,6 +30,7 @@ public class JoinGameLoadCS : MonoBehaviour
     
     private void Awake()
     {
+        Cursor.lockState = CursorLockMode.None; 
         DontDestroyOnLoad(this);
         joinAddressInput.onEndEdit.AddListener((value) => SetAddress(value));
         joinIdInput.onEndEdit.AddListener((value) => SetUsername(value));

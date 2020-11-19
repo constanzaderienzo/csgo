@@ -18,6 +18,7 @@ public class ClientCS : MonoBehaviour{
     private GameObject playerUIInstance;
     private GameObject deadScreen;
     private GameObject waitingScreen;
+    private GameObject counterWonScreen, terrorWonScreen;
     private GameObject scoreboard;
     private Channel channel;
     private IPEndPoint serverEndpoint;
@@ -65,6 +66,10 @@ public class ClientCS : MonoBehaviour{
         JoinGameLoadCS joinGameLoad = GameObject.Find("NetworkManager").GetComponent<JoinGameLoadCS>();
         deadScreen = GameObject.Find("Died");
         deadScreen.SetActive(false);
+        counterWonScreen = GameObject.Find("CounterWon");
+        counterWonScreen.SetActive(false);
+        terrorWonScreen = GameObject.Find("TerrorWon");
+        terrorWonScreen.SetActive(false);
         waitingScreen = GameObject.Find("Waiting");
         waitingScreen.SetActive(false);
         scoreboard = GameObject.Find("Scoreboard");
@@ -144,7 +149,7 @@ public class ClientCS : MonoBehaviour{
             ApplyClientInput(action, players[id].GetComponent<CharacterController>());        
         }
 
-        queuedActions.RemoveRange(0, queuedActions.Count);
+        queuedActions.Clear();
     }
 
     private void SendQueuedInputs()
@@ -153,7 +158,7 @@ public class ClientCS : MonoBehaviour{
         {
             SendReliablePacket(packet, 2f, PacketType.INPUT);
         }
-        queuedInputs.RemoveRange(0, queuedInputs.Count);
+        queuedInputs.Clear();
     }
 
     public void Update()
@@ -220,13 +225,13 @@ public class ClientCS : MonoBehaviour{
                 case (int) PacketType.SHOTS:
                     int shotId = packet.buffer.GetInt();
                     int shooterId = packet.buffer.GetInt();
-                    if(hasReceievedAck)
+                    if(hasReceievedAck && !waiting)
                         ShotEvent(shotId, shooterId);
                     break;
                 case (int) PacketType.KILLFEED_EVENT:
                     string killedUsername = packet.buffer.GetString();
                     string sourceUsername = packet.buffer.GetString();
-                    if(hasReceievedAck)
+                    if(hasReceievedAck && !waiting)
                         DeathEvent(killedUsername, sourceUsername);
                     break;
                 case (int) PacketType.WAIT_OVER:
@@ -236,7 +241,6 @@ public class ClientCS : MonoBehaviour{
                     break;
                 case (int) PacketType.ROUND_WON:
                     Debug.Log("Round won ");
-                    int team = packet.buffer.GetInt();
                     int csScoreTotal = packet.buffer.GetInt();
                     int terrorScoreTotal = packet.buffer.GetInt();
                      if (scoreboard.activeSelf)
@@ -245,6 +249,21 @@ public class ClientCS : MonoBehaviour{
                         terrorScore.text = terrorScoreTotal.ToString();
                     }
                     break;
+                case (int) PacketType.GAME_WON:
+                    waiting = true;
+                    Debug.Log("Round won ");
+                    int team = packet.buffer.GetInt();
+                    if (team == 0)
+                    {
+                        counterWonScreen.SetActive(true);
+                    }
+                    else
+                    {
+                        terrorWonScreen.SetActive(true);
+                    }
+
+                    StartCoroutine("GameEnded");
+                    break;
                 default:
                     Debug.Log("Unrecognized type in client" + packetType);
                     break;
@@ -252,6 +271,12 @@ public class ClientCS : MonoBehaviour{
             packet.Free();
             packet = channel.GetPacket();
         }
+    }
+
+    private IEnumerator GameEnded()
+    {
+        yield return new WaitForSeconds(2f);
+        SceneManager.LoadScene("LobbyCS");
     }
 
     private void InitialSetUp(Packet packet)

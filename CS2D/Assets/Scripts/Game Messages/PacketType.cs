@@ -12,5 +12,6 @@
         HEALTH = 8,
         SHOTS = 9,
         WAIT_OVER = 10,
-        ROUND_WON = 11
+        ROUND_WON = 11,
+        GAME_WON = 12
     }
