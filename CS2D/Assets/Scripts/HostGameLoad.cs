@@ -6,31 +6,29 @@ using UnityEngine.SceneManagement;
 
 public class HostGameLoad : MonoBehaviour
 {
-    [SerializeField]
-    private uint roomSize = 6;
-    
-    private string roomName;
+    // Deathmatch = 0 
+    // CS = 1
+    private int mode;
 
-    private void Awake()
+    public void SetMode(int mode)
     {
-        DontDestroyOnLoad(this);
-    }
-
-    public void SetRoomName(string name)
-    {
-        roomName = name;
+        Debug.Log("Setting mode " + mode);
+        this.mode = mode;
     }
 
     public void CreateRoom()
     {
-        if (!string.IsNullOrEmpty(roomName))
+        switch (mode)
         {
-            Debug.Log("Creating room " + roomName + " with room for " + roomSize);
-            
+            case 0:
+                Debug.Log("Loading deathmatch server");
+                SceneManager.LoadScene("ServerScene");
+                break;
+            case 1:
+                Debug.Log("Loading cs server");
+                SceneManager.LoadScene("ServerCS");
+                break;
         }
-        //Load in mode host 
-        SceneManager.LoadScene("ServerScene");
     }
-    
 }
 

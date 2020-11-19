@@ -758,7 +758,7 @@ public class ClientDeathmatch : MonoBehaviour{
         packet.Free();
 
         
-        SceneManager.LoadScene("Lobby");
+        SceneManager.LoadScene("LobbyCS");
     }
 
     private void OnDestroy()

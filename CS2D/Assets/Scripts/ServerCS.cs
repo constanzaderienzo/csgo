@@ -34,6 +34,8 @@ public class ServerCS : MonoBehaviour {
     private Dictionary<int, int> counterScoreboard, terrorScoreboard;
     private void Awake()
     {
+        Debug.Log("CS");
+
         channel = new Channel(9000);
         pps = 60;
         clientsGameObjects = new Dictionary<int, GameObject>();
@@ -175,6 +177,7 @@ public class ServerCS : MonoBehaviour {
         
         outPacket.buffer.PutBit(validUsername);
         outPacket.buffer.PutInt(clients.Count + 1);
+        outPacket.buffer.PutInt(1);
         outPacket.buffer.Flush();
         channel.Send(outPacket, packet.fromEndPoint);
     }
@@ -360,7 +363,6 @@ public class ServerCS : MonoBehaviour {
             else
             {
                 leftTerrorAlive--;
-                Debug.Log("Terror " + leftTerrorAlive);
                 if (leftTerrorAlive == 0)
                 {
                     csScore++;

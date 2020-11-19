@@ -26,6 +26,7 @@ public class ServerDeathmatch : MonoBehaviour {
     
     private void Awake()
     {
+        Debug.Log("Deathmatch");
         channel = new Channel(9000);
         pps = 60;
         clientsGameObjects = new Dictionary<int, GameObject>();
@@ -160,6 +161,7 @@ public class ServerDeathmatch : MonoBehaviour {
         
         outPacket.buffer.PutBit(validUsername);
         outPacket.buffer.PutInt(clients.Count + 1);
+        outPacket.buffer.PutInt(0);
         outPacket.buffer.Flush();
         channel.Send(outPacket, packet.fromEndPoint);
     }

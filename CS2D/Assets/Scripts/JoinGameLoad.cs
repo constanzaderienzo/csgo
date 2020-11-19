@@ -20,7 +20,6 @@ public class JoinGameLoad : MonoBehaviour
     public Text errorText;
 
     private IPEndPoint serverEndpoint;
-    
     private List<ReliablePacket> sentPlayerJoinEvents;
     public Button joinButton;
     private Channel loadChannel;
@@ -29,6 +28,7 @@ public class JoinGameLoad : MonoBehaviour
     private bool receivedACK;
     private void Awake()
     {
+        Cursor.lockState = CursorLockMode.None; 
         joinAddressInput.onEndEdit.AddListener((value) => SetAddress(value));
         joinIdInput.onEndEdit.AddListener((value) => SetUsername(value));
         sentTime = -1f;
@@ -130,8 +130,21 @@ public class JoinGameLoad : MonoBehaviour
                 if (validUsername)
                 {
                     id = packet.buffer.GetInt();
+                    int mode = packet.buffer.GetInt();
+                    Debug.Log("Mode " + mode);
                     loadChannel.Disconnect();
-                    SceneManager.LoadScene("ClientScene");
+                    switch (mode)
+                    {
+                        case 0:
+                            Debug.Log("Loading deathmatch client");
+                            SceneManager.LoadScene("Scenes/8-Bit/ClientScene");
+                            break;
+                        case 1:
+                            Debug.Log("Loading deathmatch client");
+                            SceneManager.LoadScene("Scenes/8-Bit/CS/ClientCS");
+                            break;
+                    }
+                    
                     sentTime = -1f;
                 }
                 else

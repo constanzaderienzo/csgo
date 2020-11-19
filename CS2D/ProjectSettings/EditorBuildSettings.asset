@@ -8,15 +8,6 @@ EditorBuildSettings:
   - enabled: 0
     path: 
     guid: 00000000000000000000000000000000
-  - enabled: 0
-    path: Assets/Scenes/Lobby.unity
-    guid: 556b95dec4c0a4249a534016a9c05ee9
-  - enabled: 0
-    path: Assets/Scenes/8-Bit/ClientScene.unity
-    guid: 69d8df1a88d42ae47842b8f45f806561
-  - enabled: 0
-    path: Assets/Scenes/8-Bit/ServerScene.unity
-    guid: 81a2e5c563998e14e9e22e936835d0e6
   - enabled: 1
     path: Assets/Scenes/8-Bit/CS/LobbyCS.unity
     guid: 3180c62d3c7ed5541853229f61569472
@@ -26,4 +17,10 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/8-Bit/CS/ServerCS.unity
     guid: 55cbe4d37f7e236439377854fd2423e0
+  - enabled: 1
+    path: Assets/Scenes/8-Bit/ClientScene.unity
+    guid: 69d8df1a88d42ae47842b8f45f806561
+  - enabled: 1
+    path: Assets/Scenes/8-Bit/ServerScene.unity
+    guid: 81a2e5c563998e14e9e22e936835d0e6
   m_configObjects: {}
