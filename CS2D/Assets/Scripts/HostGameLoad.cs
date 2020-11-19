@@ -18,16 +18,13 @@ public class HostGameLoad : MonoBehaviour
 
     public void CreateRoom()
     {
-        switch (mode)
+        if (mode == 1)
         {
-            case 0:
-                Debug.Log("Loading deathmatch server");
-                SceneManager.LoadScene("ServerScene");
-                break;
-            case 1:
-                Debug.Log("Loading cs server");
-                SceneManager.LoadScene("ServerCS");
-                break;
+            SceneManager.LoadScene("ServerCS");
+        }
+        else
+        {
+            SceneManager.LoadScene("ServerScene");
         }
     }
 }

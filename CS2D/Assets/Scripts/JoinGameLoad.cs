@@ -29,6 +29,7 @@ public class JoinGameLoad : MonoBehaviour
     private void Awake()
     {
         Cursor.lockState = CursorLockMode.None; 
+        DontDestroyOnLoad(this);
         joinAddressInput.onEndEdit.AddListener((value) => SetAddress(value));
         joinIdInput.onEndEdit.AddListener((value) => SetUsername(value));
         sentTime = -1f;
@@ -133,18 +134,14 @@ public class JoinGameLoad : MonoBehaviour
                     int mode = packet.buffer.GetInt();
                     Debug.Log("Mode " + mode);
                     loadChannel.Disconnect();
-                    switch (mode)
+                    if (mode == 1)
                     {
-                        case 0:
-                            Debug.Log("Loading deathmatch client");
-                            SceneManager.LoadScene("Scenes/8-Bit/ClientScene");
-                            break;
-                        case 1:
-                            Debug.Log("Loading deathmatch client");
-                            SceneManager.LoadScene("Scenes/8-Bit/CS/ClientCS");
-                            break;
+                        SceneManager.LoadScene("ClientCS");
                     }
-                    
+                    else
+                    {
+                        SceneManager.LoadScene("ClientScene");
+                    }
                     sentTime = -1f;
                 }
                 else
