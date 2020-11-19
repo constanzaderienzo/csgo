@@ -30,7 +30,7 @@ public class ServerCS : MonoBehaviour {
     private int round;
     private bool isPlaying;
     private int csScore, terrorScore;
-    
+    private SpawnSite counterSite, terrorSite;
     private void Awake()
     {
         channel = new Channel(9000);
@@ -46,6 +46,8 @@ public class ServerCS : MonoBehaviour {
         csScore = 0;
         terrorScore = 0;
         isPlaying = false;
+        counterSite = new SpawnSite(-99f, -77f, 0f, 21f);
+        terrorSite = new SpawnSite(42f, 70f, -32f, -22f);
     }
 
     public void FixedUpdate()
@@ -68,21 +70,20 @@ public class ServerCS : MonoBehaviour {
     private void RespawnPlayer(int clientId)
     {
         Debug.Log("Respawning player");
-        clientsGameObjects[clientId].transform.position = RandomSpawnPosition();
+        clientsGameObjects[clientId].transform.position = RandomSpawnPosition(clients[clientId].team);
         clientsGameObjects[clientId].SetActive(true);
         clientsGameObjects[clientId].GetComponent<CharacterController>().enabled = true;
         clients[clientId].isDead = false;
         clients[clientId].life = 100f;
     }
 
-    private Vector3 RandomSpawnPosition()
+    private Vector3 RandomSpawnPosition(int team)
     {
-        Vector3 minPosition = new Vector3(-80f, 0f, -23f);
-        Vector3 maxPosition = new Vector3(70f,0f, 24f);
+        SpawnSite spawnSite = team == 0 ? counterSite : terrorSite;
         Vector3 newPosition;
         do
         {
-            newPosition = new Vector3(Random.Range(minPosition.x, maxPosition.x), Random.Range(minPosition.y, maxPosition.y), Random.Range(minPosition.z, maxPosition.z) );
+            newPosition = new Vector3(Random.Range(spawnSite.minX, spawnSite.maxX), 0f, Random.Range(spawnSite.minZ, spawnSite.maxZ));
         } while (Physics.CheckSphere(newPosition + new Vector3(0f, 1f, 0f), 1));
         
         return newPosition;
@@ -531,10 +532,7 @@ public class ServerCS : MonoBehaviour {
 
     private void AddPlayerToWorld(int clientId)
     {
-        float xPosition = Random.Range(-4f, 4f);
-        float yPosition = 0f;
-        float zPosition = Random.Range(-4f, 4f);
-        Vector3 position = new Vector3(xPosition, yPosition, zPosition);
+        Vector3 position = RandomSpawnPosition(clients[clientId].team);
         Quaternion rotation = Quaternion.Euler(Vector3.zero);
         GameObject serverPrefab = clients[clientId].team == 1 ?  terroristPrefab : counterPrefab; 
         GameObject newClient = Instantiate(serverPrefab, position, rotation);
