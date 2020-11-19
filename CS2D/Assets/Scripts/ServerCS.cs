@@ -31,6 +31,7 @@ public class ServerCS : MonoBehaviour {
     private bool isPlaying;
     private int csScore, terrorScore;
     private SpawnSite counterSite, terrorSite;
+    private Dictionary<int, int> counterScoreboard, terrorScoreboard;
     private void Awake()
     {
         channel = new Channel(9000);
@@ -41,6 +42,8 @@ public class ServerCS : MonoBehaviour {
         queuedClientInputs = new Dictionary<Actions, GameObject>();
         counterterrorists = new List<int>();
         terrorists = new List<int>();
+        counterScoreboard = new Dictionary<int, int>();
+        terrorScoreboard = new Dictionary<int, int>();
         queuedPlayers = new List<int>();
         round = 0;
         csScore = 0;
@@ -342,6 +345,7 @@ public class ServerCS : MonoBehaviour {
             clientsGameObjects[actionHitPlayerId].SetActive(false);
             clientsGameObjects[actionHitPlayerId].GetComponent<CharacterController>().enabled = false;
             clients[actionHitPlayerId].timeToRespawn = timeToRespawn;
+            AddToScoreboard(actionHitPlayerId, sourceId);
             SendKillfeedEvent(clients[actionHitPlayerId].username, clients[sourceId].username);
             
             if (counterterrorists.Contains(actionHitPlayerId))
@@ -368,6 +372,35 @@ public class ServerCS : MonoBehaviour {
         else
         {
             SendShotEvent(actionHitPlayerId, sourceId);
+        }
+    }
+
+    private void AddToScoreboard(int killed, int killer)
+    {
+        int teamKilled = clients[killed].team;
+        if (counterterrorists.Contains(killer))
+        {
+            // Substracts one as he killled teammate
+            if (teamKilled == 0)
+            {
+                counterScoreboard[killer]--;
+            }
+            else
+            {
+                counterScoreboard[killer]++;
+            }
+        }
+        else
+        {
+            // Substracts one as he killled teammate
+            if (teamKilled == 1)
+            {
+                terrorScoreboard[killer]--;
+            }
+            else
+            {
+                terrorScoreboard[killer]++;
+            }
         }
     }
 
@@ -439,6 +472,7 @@ public class ServerCS : MonoBehaviour {
     
     private void SendGameWonEvent(int team)
     {
+        Scoreboard scoreboard = new Scoreboard(counterScoreboard, terrorScoreboard);
         foreach (var id in clients.Keys)
         {
             if (!clients[id].disconnected)
@@ -447,6 +481,7 @@ public class ServerCS : MonoBehaviour {
                 var packet = Packet.Obtain();
                 packet.buffer.PutInt((int) PacketType.GAME_WON);
                 packet.buffer.PutInt(team);
+                scoreboard.Serialize(packet.buffer, clients);
                 packet.buffer.Flush();
                 channel.Send(packet, clientEndpoint);
             }
@@ -533,11 +568,13 @@ public class ServerCS : MonoBehaviour {
         {
             clientInfo = new ClientInfo(clientUsername, endPoint, 0);
             counterterrorists.Add(clientId);
+            counterScoreboard.Add(clientId, 0);
         }
         else
         {
             clientInfo = new ClientInfo(clientUsername, endPoint, 1);
             terrorists.Add(clientId);
+            terrorScoreboard.Add(clientId, 0);
         }
 
         clients[clientId] = clientInfo;

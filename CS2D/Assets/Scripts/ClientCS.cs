@@ -253,6 +253,7 @@ public class ClientCS : MonoBehaviour{
                     waiting = true;
                     Debug.Log("Round won ");
                     int team = packet.buffer.GetInt();
+
                     if (team == 0)
                     {
                         counterWonScreen.SetActive(true);
@@ -261,6 +262,9 @@ public class ClientCS : MonoBehaviour{
                     {
                         terrorWonScreen.SetActive(true);
                     }
+                    
+                    Scoreboard scoreboardTable = Scoreboard.Deserialize(packet.buffer);
+                    ShowTable(scoreboardTable);
 
                     StartCoroutine("GameEnded");
                     break;
@@ -273,6 +277,13 @@ public class ClientCS : MonoBehaviour{
         }
     }
 
+    private void ShowTable(Scoreboard scoreboard)
+    {
+        ScoreTable csScoreTable = GameObject.Find("CounterTable").GetComponent<ScoreTable>();
+        csScoreTable.SetUp(scoreboard.countersString);
+        ScoreTable terrorScoreTable = GameObject.Find("TerrorTable").GetComponent<ScoreTable>();
+        terrorScoreTable.SetUp(scoreboard.terrorsString);
+    }
     private IEnumerator GameEnded()
     {
         yield return new WaitForSeconds(2f);
