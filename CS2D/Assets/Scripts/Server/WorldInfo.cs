@@ -47,7 +47,7 @@ public class WorldInfo
         return new WorldInfo(currentPlayers, currentPlayersInfo);
     }
 
-    public static Dictionary<int, GameObject> DeserializeSetUp(BitBuffer packetBuffer, GameObject otherPlayerPrefab, int id, Dictionary<int, GameObject> players)
+    public static Dictionary<int, GameObject> DeserializeSetUp(BitBuffer packetBuffer, GameObject otherPlayerPrefabCounter, GameObject otherPlayerPrefabTerror, int id, Dictionary<int, GameObject> players)
     {
         Dictionary<int, GameObject> currentPlayers = new Dictionary<int, GameObject>();
 
@@ -56,13 +56,15 @@ public class WorldInfo
         {
             int playerId = packetBuffer.GetInt();
             ClientEntity playerEntity = ClientEntity.DeserializeInfo(packetBuffer);
-            ClientInfo.DeserializeInfo(packetBuffer);
+            ClientInfo clientInfo =  ClientInfo.DeserializeInfo(packetBuffer);
 
             if (playerId != id && !players.ContainsKey(playerId))
             {
                 Vector3 position = playerEntity.position;
                 Quaternion rotation = Quaternion.Euler(playerEntity.eulerAngles);
                 Debug.Log("Instantiating player " + playerId + " at  " + position);
+                GameObject otherPlayerPrefab =
+                    clientInfo.team == 1 ?  otherPlayerPrefabTerror : otherPlayerPrefabCounter;
                 GameObject player = GameObject.Instantiate(otherPlayerPrefab, position, rotation);
                 player.name = playerId.ToString();
                 currentPlayers.Add(playerId, player);                

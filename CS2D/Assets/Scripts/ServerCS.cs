@@ -5,10 +5,10 @@ using System.Net;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-public class MyServer : MonoBehaviour {
+public class ServerCS : MonoBehaviour {
 
     [SerializeField]
-    private GameObject serverPrefab;
+    private GameObject counterPrefab, terroristPrefab;
     private Channel channel;
     private float accum = 0f;
     private float serverTime = 0f;
@@ -22,6 +22,8 @@ public class MyServer : MonoBehaviour {
     private Dictionary<int, ClientInfo> clients;
     private List<NewPlayerBroadcastEvent> newPlayerBroadcastEvents;
     private Dictionary<Actions, GameObject> queuedClientInputs;
+    private List<int> counterterrorists;
+    private List<int> terrorists;
     private float timeToRespawn = 200f;
     
     private void Awake()
@@ -32,6 +34,8 @@ public class MyServer : MonoBehaviour {
         clients = new Dictionary<int, ClientInfo>();
         newPlayerBroadcastEvents = new List<NewPlayerBroadcastEvent>();
         queuedClientInputs = new Dictionary<Actions, GameObject>();
+        counterterrorists = new List<int>();
+        terrorists = new List<int>();
     }
 
     public void FixedUpdate()
@@ -102,7 +106,10 @@ public class MyServer : MonoBehaviour {
         
         float sendRate = (1f/pps);
         if (accum >= sendRate) {
-            SendSnapshot();
+            if (clients.Count >= 2)
+            {
+                SendSnapshot();
+            }
             accum -= sendRate;
         }
     }
@@ -311,8 +318,7 @@ public class MyServer : MonoBehaviour {
             audioSource.Pause();
         }
     }
-
-
+    
     private void ApplyHit(int actionHitPlayerId, int sourceId, float damage)
     {
         clients[actionHitPlayerId].life -= damage;
@@ -406,24 +412,39 @@ public class MyServer : MonoBehaviour {
         int clientId = clients.Count + 1;
         IPEndPoint endPoint = packet.fromEndPoint;
         Debug.Log("Client with id " + clientId + " and endpoint " + endPoint.Address + endPoint.Port + " was added");
-        ClientInfo clientInfo = new ClientInfo(clientUsername, endPoint);
+        ClientInfo clientInfo;
+        int team;
+        if (counterterrorists.Count < terrorists.Count)
+        {
+            team = 0;
+            clientInfo = new ClientInfo(clientUsername, endPoint, 0);
+            counterterrorists.Add(clientId);
+        }
+        else
+        {
+            team = 1;
+            clientInfo = new ClientInfo(clientUsername, endPoint, 1);
+            terrorists.Add(clientId);
+        }
+
         clients[clientId] = clientInfo;
         SendAck(clientId, endPoint, (int)PacketType.PLAYER_JOINED_GAME_ACK, (int) PacketType.PLAYER_JOINED_GAME_ACK);
-        AddPlayerToWorld(clientId);
+        AddPlayerToWorld(clientId, team);
     }
 
-    private void AddPlayerToWorld(int clientId)
+    private void AddPlayerToWorld(int clientId, int team)
     {
         float xPosition = Random.Range(-4f, 4f);
         float yPosition = 0f;
         float zPosition = Random.Range(-4f, 4f);
         Vector3 position = new Vector3(xPosition, yPosition, zPosition);
         Quaternion rotation = Quaternion.Euler(Vector3.zero);
+        GameObject serverPrefab = team == 1 ?  terroristPrefab : counterPrefab; 
         GameObject newClient = Instantiate(serverPrefab, position, rotation);
         clientsGameObjects[clientId] = newClient;
        
         //Send Broadcast
-        BroadcastNewPlayer(clientId, position, rotation.eulerAngles);
+        BroadcastNewPlayer(clientId, position, rotation.eulerAngles, team);
         
         //Send world info so the player can do initial set up
         SendWorldStatusToNewPlayer(clientId);
@@ -441,7 +462,7 @@ public class MyServer : MonoBehaviour {
         channel.Send(packet, clients[clientId].ipEndPoint);
     }
 
-    private void BroadcastNewPlayer(int newPlayerId, Vector3 position, Vector3 rotation)
+    private void BroadcastNewPlayer(int newPlayerId, Vector3 position, Vector3 rotation, int team)
     {
         ClientEntity newPlayer = new ClientEntity(clientsGameObjects[newPlayerId], position, rotation);
         foreach (var id in clients.Keys)
@@ -451,7 +472,7 @@ public class MyServer : MonoBehaviour {
                 IPEndPoint clientEndpoint = clients[id].ipEndPoint;
                 var packet = Packet.Obtain();
                 packet.buffer.PutInt((int) PacketType.NEW_PLAYER_BROADCAST);
-                NewPlayerBroadcastEvent newPlayerEvent = new NewPlayerBroadcastEvent(newPlayerId, newPlayer, serverTime, id);
+                NewPlayerBroadcastEvent newPlayerEvent = new NewPlayerBroadcastEvent(newPlayerId, newPlayer, serverTime, id, team);
                 newPlayerEvent.Serialize(packet.buffer);
                 packet.buffer.Flush();
                 //Debug.Log("Sending broadcast to playerId  " + id + "with port " + clients[id].ipEndPoint.Port);

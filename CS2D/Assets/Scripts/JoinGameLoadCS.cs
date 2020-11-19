@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-public class JoinGameLoad : MonoBehaviour
+public class JoinGameLoadCS : MonoBehaviour
 {
 
     [SerializeField] private uint roomSize = 6;
@@ -27,8 +27,10 @@ public class JoinGameLoad : MonoBehaviour
     private float sentTime;
     private int retries;
     private bool receivedACK;
+    
     private void Awake()
     {
+        DontDestroyOnLoad(this);
         joinAddressInput.onEndEdit.AddListener((value) => SetAddress(value));
         joinIdInput.onEndEdit.AddListener((value) => SetUsername(value));
         sentTime = -1f;
@@ -131,7 +133,7 @@ public class JoinGameLoad : MonoBehaviour
                 {
                     id = packet.buffer.GetInt();
                     loadChannel.Disconnect();
-                    SceneManager.LoadScene("ClientScene");
+                    SceneManager.LoadScene("ClientCS");
                     sentTime = -1f;
                 }
                 else

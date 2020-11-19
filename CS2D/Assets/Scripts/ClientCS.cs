@@ -6,22 +6,25 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-public class MyClient : MonoBehaviour{
+public class ClientCS : MonoBehaviour{
     
     [SerializeField]
     private GameObject playerPrefab;
     [SerializeField]
-    private GameObject otherPlayerPrefab;
+    private GameObject otherPlayerPrefabCounter, otherPlayerPrefabTerror;
     private readonly GameObject conciliateGameObject;
     [SerializeField]
     private GameObject playerUIPrefab;
     private GameObject playerUIInstance;
     private GameObject deadScreen;
+    private GameObject waitingScreen;
+    private GameObject scoreboard;
     private Channel channel;
     private IPEndPoint serverEndpoint;
     private List<Snapshot> interpolationBuffer;
     private readonly int requiredSnapshots = 3;
     private float time;
+    private int waitingTime;
     private bool clientPlaying = false;
     private bool hasReceievedAck = false;
     private float clientTime = 0f;
@@ -53,13 +56,18 @@ public class MyClient : MonoBehaviour{
     public AudioClip emptyClip;
     public GameObject bloodSpatter;
     private int hitPlayerId = -1;
+    private bool waiting;
     
     private void Awake()
     {
         Debug.Log("Awaking");
-        JoinGameLoad joinGameLoad = GameObject.Find("NetworkManager").GetComponent<JoinGameLoad>();
+        JoinGameLoadCS joinGameLoad = GameObject.Find("NetworkManager").GetComponent<JoinGameLoadCS>();
         deadScreen = GameObject.Find("Died");
         deadScreen.SetActive(false);
+        waitingScreen = GameObject.Find("Waiting");
+        waitingScreen.SetActive(false);
+        scoreboard = GameObject.Find("Scoreboard");
+        scoreboard.SetActive(false);
         SetUsername(joinGameLoad.username);
         SetId(joinGameLoad.id);
         SetServerEndpoint(joinGameLoad.address);
@@ -67,7 +75,9 @@ public class MyClient : MonoBehaviour{
         players = new Dictionary<int, GameObject>();
         inputIndex = 0;
         lastRemoved = 0;
-        paused = false; 
+        paused = false;
+        waiting = false;
+        waitingTime = 0;
         clientActions = new List<Actions>();
         interpolationBuffer = new List<Snapshot>();
         packetsToSend = new List<ReliablePacket>();
@@ -170,9 +180,34 @@ public class MyClient : MonoBehaviour{
             }
         }
 
-        
+        if (players.Count < 2)
+        {
+            waiting = true;
+            Cursor.lockState = CursorLockMode.None;
+            InvokeRepeating("AddToWaitingTime", 1, 1);
+            DisplayWaitTime();
+        }
+        else
+        {
+            waiting = false;
+            waitingScreen.SetActive(false);
+            Cursor.lockState = CursorLockMode.Locked;
+            scoreboard.SetActive(true);
+        }
         ProcessPacket();
 
+    }
+
+    private void AddToWaitingTime()
+    {
+        waitingTime++;
+    }
+
+    private void DisplayWaitTime()
+    {
+        waitingScreen.SetActive(true);
+        Text waitTimeText = GameObject.Find("WaitingTimerText").GetComponent<Text>();
+        waitTimeText.text = waitingTime.ToString();
     }
     
     private void ProcessPacket()
@@ -200,7 +235,7 @@ public class MyClient : MonoBehaviour{
                     break;
                 case (int) PacketType.NEW_PLAYER_BROADCAST:
                     NewPlayerBroadcastEvent newPlayer = NewPlayerBroadcastEvent.Deserialize(packet.buffer);
-                    AddClient(newPlayer.playerId, newPlayer.newPlayer);
+                    AddClient(newPlayer.playerId, newPlayer.newPlayer, newPlayer.team);
                     break;
                 case (int) PacketType.SHOTS:
                     int shotId = packet.buffer.GetInt();
@@ -226,7 +261,7 @@ public class MyClient : MonoBehaviour{
         Debug.Log("Doing set up for player " + id);
         // Discarding packet number (this is because im reusing the snapshot logic)
         packet.buffer.GetInt(); 
-        Dictionary<int, GameObject> currentPlayers = WorldInfo.DeserializeSetUp(packet.buffer, otherPlayerPrefab, id, players);
+        Dictionary<int, GameObject> currentPlayers = WorldInfo.DeserializeSetUp(packet.buffer, otherPlayerPrefabCounter, otherPlayerPrefabTerror, id, players);
         foreach (var player in currentPlayers)
         {
             if (!players.ContainsKey(player.Key))
@@ -258,11 +293,11 @@ public class MyClient : MonoBehaviour{
         }
     }
     
-    private void AddClient(int playerId, ClientEntity playerEntity) 
+    private void AddClient(int playerId, ClientEntity playerEntity, int team) 
     {
         if (!players.ContainsKey(playerId))
         {
-            SpawnPlayer(playerId, playerEntity);
+            SpawnPlayer(playerId, playerEntity, team);
             playerShoot = players[id].GetComponent<PlayerShoot>();
         }
         //Send ACK
@@ -335,6 +370,16 @@ public class MyClient : MonoBehaviour{
             players[id].transform.eulerAngles,
             AnimationState.GetFromAnimator(animator)
         );
+
+        if (waiting)
+        {
+            action = new Actions(
+                id, 
+                inputIndex,
+                false, false, false, false, false, false, false, 
+                players[id].transform.eulerAngles, 
+                AnimationState.GetFromAnimator(animator));
+        }
 
         queuedActions.Add(action);
         clientActions.Add(action);
@@ -689,7 +734,7 @@ public class MyClient : MonoBehaviour{
 
     }
 
-    private void SpawnPlayer(int playerId, ClientEntity playerEntity)
+    private void SpawnPlayer(int playerId, ClientEntity playerEntity, int team)
     {
         Vector3 position = playerEntity.position;
         Debug.Log("Spawning player " + playerId );
@@ -705,6 +750,7 @@ public class MyClient : MonoBehaviour{
         else
         {
             Debug.Log("In other");
+            GameObject otherPlayerPrefab = team == 1 ? otherPlayerPrefabTerror : otherPlayerPrefabCounter;
             player = Instantiate(otherPlayerPrefab, position, rotation);
 
         }
@@ -758,7 +804,7 @@ public class MyClient : MonoBehaviour{
         packet.Free();
 
         
-        SceneManager.LoadScene("Lobby");
+        SceneManager.LoadScene("LobbyCS");
     }
 
     private void OnDestroy()

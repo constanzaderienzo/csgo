@@ -10,7 +10,13 @@ public class ClientInfo
     public float timeToRespawn;
     public bool disconnected;
     public int packetNumber;
-    public ClientInfo(string username, IPEndPoint endPoint)
+    /// <summary>
+    /// -1 = N/A
+    /// Team 0 = Counter Terrorists
+    /// Team 1 = Terrorists
+    /// </summary>
+    public int team;
+    public ClientInfo(string username, IPEndPoint endPoint, int team)
     {
         this.username = username;
         ipEndPoint = endPoint;
@@ -19,6 +25,7 @@ public class ClientInfo
         isDead = false;
         disconnected = false;
         packetNumber = 1;
+        this.team = team;
     }
 
     public ClientInfo(ClientInfo clientInfo)
@@ -29,6 +36,7 @@ public class ClientInfo
         isDead = clientInfo.isDead;
         disconnected = clientInfo.disconnected;
         packetNumber = clientInfo.packetNumber;
+        team = clientInfo.team;
     }
     public ClientInfo(){}
 
@@ -41,6 +49,7 @@ public class ClientInfo
         buffer.PutBit(isDead);
         buffer.PutBit(disconnected);
         buffer.PutInt(packetNumber);
+        buffer.PutInt(team);
     }
 
     public static ClientInfo DeserializeInfo(BitBuffer buffer)
@@ -52,6 +61,7 @@ public class ClientInfo
         playerInfo.isDead = buffer.GetBit();
         playerInfo.disconnected = buffer.GetBit();
         playerInfo.packetNumber = buffer.GetInt();
+        playerInfo.team = buffer.GetInt();
         return playerInfo;
     }
 }
