@@ -34,6 +34,7 @@ public class ServerCS : MonoBehaviour {
     private Dictionary<int, int> counterScoreboard, terrorScoreboard;
     private void Awake()
     {
+        Application.targetFrameRate = 60;
         channel = new Channel(9000);
         pps = 60;
         clientsGameObjects = new Dictionary<int, GameObject>();
