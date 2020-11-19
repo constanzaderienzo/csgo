@@ -54,6 +54,7 @@ public class ClientDeathmatch : MonoBehaviour{
     public GameObject bloodSpatter;
     private int hitPlayerId = -1;
     private int delay;
+    private float[] delays = new float[]{0.0f, 0.1f, 0.2f, 0.3f, 0.4f};
     
     private void Awake()
     {
@@ -182,7 +183,7 @@ public class ClientDeathmatch : MonoBehaviour{
     {
         if (Input.GetKeyDown(KeyCode.L))
         {
-            delay++;
+            delay = delay++ < 4 ? delay++ : 4;
         }
         else if (Input.GetKeyDown(KeyCode.K))
         {
@@ -320,7 +321,7 @@ public class ClientDeathmatch : MonoBehaviour{
     private IEnumerator AddLag(Packet packet)
     {
         Debug.Log("Waiting for delay");
-        yield return new WaitForSeconds	(delay);
+        yield return new WaitForSeconds	(delays[delay]);
         channel.Send(packet, serverEndpoint);
     }
     
