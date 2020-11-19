@@ -36,6 +36,8 @@ Each of these in addition of changing the speed of the movement, change the soun
 
 Whenever a kill has occurred a message will appear at the top right of the screen indicating who killed who.
 
+Finally, to exit one can press Escape and a side menu will open allowing the player to Disconnect from the server.
+
 #### Team mode
 In the this mode the player spawns in either the **terrorist** or **counter-terrorist** team. Each team has a specific spawn site. 
 
