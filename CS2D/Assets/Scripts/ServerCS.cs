@@ -377,8 +377,7 @@ public class ServerCS : MonoBehaviour {
     private void StartNewRound(int team)
     {
         isPlaying = false;
-        round++; 
-        Debug.Log("Queued " + queuedPlayers.Count);
+        round++;
         foreach (var clientId in queuedPlayers)
         {
             AddPlayerToWorld(clientId);
@@ -387,7 +386,7 @@ public class ServerCS : MonoBehaviour {
         }
         queuedPlayers.Clear();
         RespawnDeadClients();
-        //SendWonEvent(team);
+        SendWonEvent(team);
         leftCounterAlive = counterterrorists.Count;
         leftTerrorAlive = terrorists.Count;
         isPlaying = true;
