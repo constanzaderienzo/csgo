@@ -26,7 +26,6 @@ public class ServerDeathmatch : MonoBehaviour {
     
     private void Awake()
     {
-        Application.targetFrameRate = 60;
         Debug.Log("Deathmatch");
         channel = new Channel(9000);
         pps = 60;

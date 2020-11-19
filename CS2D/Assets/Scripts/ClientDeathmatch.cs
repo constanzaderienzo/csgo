@@ -57,7 +57,6 @@ public class ClientDeathmatch : MonoBehaviour{
     
     private void Awake()
     {
-        Application.targetFrameRate = 60;
         Debug.Log("Awaking");
         delay = 0;
         JoinGameLoad joinGameLoad = GameObject.Find("NetworkManager").GetComponent<JoinGameLoad>();

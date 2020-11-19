@@ -62,7 +62,6 @@ public class ClientCS : MonoBehaviour{
     
     private void Awake()
     {
-        Application.targetFrameRate = 60;
         Debug.Log("Awaking");
         JoinGameLoad joinGameLoad = GameObject.Find("NetworkManager").GetComponent<JoinGameLoad>();
         deadScreen = GameObject.Find("Died");
